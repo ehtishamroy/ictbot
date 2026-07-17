@@ -50,15 +50,16 @@ Goal: correct data and correct time. If time is wrong, every downstream number i
 - [x] BOS / CHoCH structure state machine (`indicators/structure.py`, DEF-STRUCT-01/02)
 - [x] Unit tests against hand-built fixtures (15 tests green total)
 
-## PHASE 3 — Detectors (one function per DEF-ID, D1 map)
+## PHASE 3 — Detectors (one function per DEF-ID, D1 map)  ✅
 Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
-- [ ] `sweep_detected(level)` → stores `sweep_extreme` (DEF-SWEEP-01)
-- [ ] `is_displacement(i)` (DEF-DISP-01, incl. 4.0×ATR upper reject)
-- [ ] `mss_confirmed(dir)` (DEF-MSS-01: sweep + close beyond swing + displacement leaves FVG)
-- [ ] `detect_fvg(i)` + `fvg_alive(zone)` + CE + nested-FVG lowest/highest rule (DEF-FVG-01)
-- [ ] `htf_bias()` on 1H (DEF-BIAS-01)
-- [ ] `dol_exists(level)` unswept PDH/PDL within 3.0×ATR(1H) (DEF-DOL-01)
-- [ ] `spread_ok()`, `news_clear()` filters (A5)
+- [x] `detect_sweep_at(level)` → `Sweep` with `sweep_extreme` (`detectors/sweep.py`, DEF-SWEEP-01)
+- [x] `is_displacement(i)` incl. 4.0×ATR news-print reject (`detectors/displacement.py`, DEF-DISP-01)
+- [x] `mss_confirmed(dir)` — sweep-window + close-beyond-swing + displacement-leaves-FVG (`detectors/mss.py`, DEF-MSS-01)
+- [x] `detect_fvg` + `is_alive` + CE + nested lowest-bull/highest-bear (`detectors/fvg.py`, DEF-FVG-01)
+- [x] `htf_bias_series` + `bias_at` (no look-ahead HTF alignment) (`detectors/bias.py`, DEF-BIAS-01)
+- [x] `dol_exists(level)` unswept PDH/PDL within 3.0×ATR(1H) (`detectors/dol.py`, DEF-DOL-01)
+- [x] `spread_ok()`, `news_clear()` filters (`detectors/filters.py`, A5) — news loader (CSV→event list) still pending
+- [x] 11 new unit tests (26 total green)
 
 ## PHASE 4 — Strategy engine (A7 state machine)
 - [ ] Guards block (trades/day, dayR, one position, killzone, spread, news; reset at 17:00 NY)
@@ -111,8 +112,7 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **Active phase:** Phases 0–2 done (scaffold, time/data layer, indicators). Moving to Phase 3 (detectors).
+- **Active phase:** Phases 0–3 done (scaffold, time/data layer, indicators, detectors). Moving to Phase 4 (state machine engine).
 - **Open blocker (environment/policy):**
   - **Dukascopy egress → 403** — the session's network policy blocks `datafeed.dukascopy.com`. Downloader code is ready; it needs either a more permissive network policy, or the user runs it where there's internet, or provides CSVs into `data/raw`. Only bites at Phase 5 (backtest run).
-  - *(git push access resolved — commits now reach GitHub.)*
-- **Next action:** Phase 3 — detectors (sweep, displacement, MSS, FVG, bias, DOL), one per DEF-ID, each unit-tested on fixtures.
+- **Next action:** Phase 4 — the A7 state machine (IDLE→SWEPT→WAIT_RETRACE→IN_TRADE) + guards + risk sizing, wiring the detectors together into trade records.
