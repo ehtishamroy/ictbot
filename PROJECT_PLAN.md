@@ -44,11 +44,11 @@ Goal: correct data and correct time. If time is wrong, every downstream number i
 - [ ] Data validation: ≥ 2 years, ≥ both a high- and low-vol ATR regime present (needs real data)
 - [ ] News calendar loader (ForexFactory CSV) joined on timestamp, USD+EUR high-impact (D5)
 
-## PHASE 2 — Core primitives / indicators
-- [ ] `ATR(14)` on 5m and 1H (DEF references)
-- [ ] `get_swings(k)` — fractal swings, **confirmed k bars late, never repaint** (DEF-SWING-01)
-- [ ] BOS / CHoCH structure events (DEF-STRUCT-01/02)
-- [ ] Unit tests for each against hand-built fixtures
+## PHASE 2 — Core primitives / indicators  ✅
+- [x] `ATR(14)` — Wilder RMA, matches MT5 iATR / Pine ta.atr (`indicators/atr.py`)
+- [x] `compute_swings(k)` — fractal swings, **confirmed k bars late, never repaint**; per-bar look-ahead-safe `conf_sh/conf_sl` (`indicators/swings.py`, DEF-SWING-01)
+- [x] BOS / CHoCH structure state machine (`indicators/structure.py`, DEF-STRUCT-01/02)
+- [x] Unit tests against hand-built fixtures (15 tests green total)
 
 ## PHASE 3 — Detectors (one function per DEF-ID, D1 map)
 Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
@@ -111,9 +111,8 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **Active phase:** Phase 1 done (time layer + downloader + resampler). Moving to Phase 2 (indicators).
-- **Open blockers (both are environment/policy, on the user's side):**
-  1. **git push → 403** — Claude GitHub App appears to have read-only access to `ehtishamroy/ictbot`. All work is committed locally, waiting on write access.
-  2. **Dukascopy egress → 403** — the session's network policy blocks `datafeed.dukascopy.com`. Downloader code is ready; it needs either a more permissive network policy, or the user runs it where there's internet, or provides CSVs into `data/raw`.
-- **Neither blocker stops logic work:** Phases 2–4 (indicators, detectors, engine) are pure logic, unit-tested on hand-built fixtures — no network/data needed. Real data only becomes essential at Phase 5 (backtest run).
-- **Next action:** Phase 2 — ATR + non-repainting swings + BOS/CHoCH, each unit-tested.
+- **Active phase:** Phases 0–2 done (scaffold, time/data layer, indicators). Moving to Phase 3 (detectors).
+- **Open blocker (environment/policy):**
+  - **Dukascopy egress → 403** — the session's network policy blocks `datafeed.dukascopy.com`. Downloader code is ready; it needs either a more permissive network policy, or the user runs it where there's internet, or provides CSVs into `data/raw`. Only bites at Phase 5 (backtest run).
+  - *(git push access resolved — commits now reach GitHub.)*
+- **Next action:** Phase 3 — detectors (sweep, displacement, MSS, FVG, bias, DOL), one per DEF-ID, each unit-tested on fixtures.
