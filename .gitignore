@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Data (large, not versioned — document source in reports instead)
+data/raw/*
+data/processed/*
+data/news/*
+!data/**/.gitkeep
+
+# Reports output (keep the dir, ignore generated runs)
+reports/*
+!reports/.gitkeep
+
+# OS
+.DS_Store
