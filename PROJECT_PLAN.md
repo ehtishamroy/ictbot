@@ -34,15 +34,15 @@ Goal: a runnable, testable, reproducible skeleton.
 
 ## PHASE 1 — Data & time layer (highest-risk foundation)
 Goal: correct data and correct time. If time is wrong, every downstream number is garbage (D6 bug #2).
-- [ ] Data source decided & documented (Dukascopy / other) — **BLOCKER for real numbers**
-- [ ] Tick/1m EURUSD loader → clean UTC-indexed OHLCV (`data/loader.py`)
-- [ ] Resampler → 5m LTF and 1H HTF, no look-ahead on partial bars
-- [ ] **Timezone core**: `to_ny_time()`, DST-correct via `zoneinfo` (DEF-TIME-01)
-- [ ] `in_killzone()` NY AM 08:30–11:00 (DEF-KZ-01)
-- [ ] **17:00-NY trading-day boundary** for PDH/PDL + counter resets
-- [ ] Data validation: ≥ 2 years, ≥ both a high- and low-vol ATR regime present
+- [x] Data source decided: **Dukascopy** (free tick data)
+- [x] Dukascopy downloader written (`data/dukascopy.py`) — [!] **blocked: egress policy 403 on datafeed.dukascopy.com**
+- [x] Resampler → ticks→1m/5m and 5m→1H HTF, left-labelled/right-open, no look-ahead (`data/resample.py`)
+- [x] **Timezone core**: `to_ny()`, DST-correct via `zoneinfo` (DEF-TIME-01)
+- [x] `in_killzone()` NY AM 08:30–11:00, scalar + vectorized (DEF-KZ-01)
+- [x] **17:00-NY trading-day boundary** + PDH/PDL computation (`nytime.previous_day_levels`)
+- [x] Unit tests: winter/summer killzone + boundary + PDH/PDL (12 tests green)
+- [ ] Data validation: ≥ 2 years, ≥ both a high- and low-vol ATR regime present (needs real data)
 - [ ] News calendar loader (ForexFactory CSV) joined on timestamp, USD+EUR high-impact (D5)
-- [ ] Unit tests: known session opens map to expected bars (C1 step 1)
 
 ## PHASE 2 — Core primitives / indicators
 - [ ] `ATR(14)` on 5m and 1H (DEF references)
@@ -111,6 +111,9 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **Active phase:** Phase 0 (scaffolding) → moving into Phase 1 (data & time).
-- **Open blocker:** data source for EURUSD tick/1m, ≥ 2 years (needed for any real numbers).
-- **Next action:** finish Phase 0 files, then build the time layer first (Phase 1) because it is the #1 bug source.
+- **Active phase:** Phase 1 done (time layer + downloader + resampler). Moving to Phase 2 (indicators).
+- **Open blockers (both are environment/policy, on the user's side):**
+  1. **git push → 403** — Claude GitHub App appears to have read-only access to `ehtishamroy/ictbot`. All work is committed locally, waiting on write access.
+  2. **Dukascopy egress → 403** — the session's network policy blocks `datafeed.dukascopy.com`. Downloader code is ready; it needs either a more permissive network policy, or the user runs it where there's internet, or provides CSVs into `data/raw`.
+- **Neither blocker stops logic work:** Phases 2–4 (indicators, detectors, engine) are pure logic, unit-tested on hand-built fixtures — no network/data needed. Real data only becomes essential at Phase 5 (backtest run).
+- **Next action:** Phase 2 — ATR + non-repainting swings + BOS/CHoCH, each unit-tested.
