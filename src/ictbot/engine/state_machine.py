@@ -24,7 +24,7 @@ from ..data.nytime import to_ny
 from ..detectors.dol import dol_exists
 from ..detectors.filters import news_clear, spread_ok
 from ..detectors.mss import mss_confirmed
-from ..detectors.sweep import detect_sweep_at
+from ..detectors.sweep import sweep_at_arrays
 from .fills import BarFillModel
 from .params import EngineParams
 
@@ -250,44 +250,58 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
                 nd = (_LONG if nb == "BULLISH" else _SHORT if nb == "BEARISH" else None)
                 entry_narrative = None
                 if nd is not None and kz_idx is not None:
-                    # DEF-LIQ-02: sweep pool = overnight session extreme, frozen
-                    # at kz open; PDL/PDH fallback when no overnight bars exist.
-                    if nd.name == LONG:
-                        n_swp_lvl = run_lo[kz_idx] if np.isfinite(run_lo[kz_idx]) else pdl[kz_idx]
-                        n_dol_lvl = pdh[kz_idx]
+                    if params.pool_mode == "swing":
+                        # ILS: pools are picked per bar; narrative only fixes the
+                        # bias direction and the external TP2 anchor (PDH/PDL).
+                        n_dol_lvl = pdh[kz_idx] if nd.name == LONG else pdl[kz_idx]
+                        if np.isfinite(n_dol_lvl):
+                            entry_narrative = (nd, np.nan, n_dol_lvl)
                     else:
-                        n_swp_lvl = run_hi[kz_idx] if np.isfinite(run_hi[kz_idx]) else pdh[kz_idx]
-                        n_dol_lvl = pdl[kz_idx]
-                    if np.isfinite(n_swp_lvl) and np.isfinite(n_dol_lvl):
-                        shallow = ((kz_open - n_swp_lvl) < params.shallow_floor_price
-                                   if nd.name == LONG
-                                   else (n_swp_lvl - kz_open) < params.shallow_floor_price)
-                        dol_swept = swept_incl(nd.dol_pool, day, kz_idx)
-                        if not shallow and dol_exists(kz_open, n_dol_lvl, atr1h[kz_idx],
-                                                      nd.dol_dir, dol_swept, params.dol_reach):
-                            entry_narrative = (nd, n_swp_lvl, n_dol_lvl)
+                        # DEF-LIQ-02: sweep pool = overnight session extreme,
+                        # frozen at kz open; PDL/PDH fallback if no overnight bars.
+                        if nd.name == LONG:
+                            n_swp_lvl = run_lo[kz_idx] if np.isfinite(run_lo[kz_idx]) else pdl[kz_idx]
+                            n_dol_lvl = pdh[kz_idx]
+                        else:
+                            n_swp_lvl = run_hi[kz_idx] if np.isfinite(run_hi[kz_idx]) else pdh[kz_idx]
+                            n_dol_lvl = pdl[kz_idx]
+                        if np.isfinite(n_swp_lvl) and np.isfinite(n_dol_lvl):
+                            shallow = ((kz_open - n_swp_lvl) < params.shallow_floor_price
+                                       if nd.name == LONG
+                                       else (n_swp_lvl - kz_open) < params.shallow_floor_price)
+                            dol_swept = swept_incl(nd.dol_pool, day, kz_idx)
+                            if not shallow and dol_exists(kz_open, n_dol_lvl, atr1h[kz_idx],
+                                                          nd.dol_dir, dol_swept, params.dol_reach):
+                                entry_narrative = (nd, n_swp_lvl, n_dol_lvl)
                 narrative[day] = entry_narrative
 
             cached = narrative[day]
             if cached is None:
                 continue
             d, swp_lvl, dol_lvl = cached
+            if params.pool_mode == "swing":
+                # ILS pool for this bar: most recent CONFIRMED swing low/high
+                swp_lvl = conf_sl[i] if d.name == LONG else conf_sh[i]
+                if not np.isfinite(swp_lvl):
+                    continue
             if (day, d.name, swp_lvl) in attempted:
                 continue
 
-            sweep = detect_sweep_at(features, i, swp_lvl, d.sweep_dir,
+            sweep = sweep_at_arrays(hi, lo, cl, i, swp_lvl, d.sweep_dir,
                                     params.tick, params.sweep_close_n)
             if sweep is None:
                 continue
-            # N3 fuel unspent: no same-day penetration of the pool before this
-            # sweep's own penetration (level-based — the pool is per-day now)
-            fs = day_first[day]
-            if d.name == LONG:
-                fuel_spent = bool(np.any(lo[fs:sweep.penetration_idx] <= swp_lvl - params.tick))
-            else:
-                fuel_spent = bool(np.any(hi[fs:sweep.penetration_idx] >= swp_lvl + params.tick))
-            if fuel_spent:
-                continue
+            if params.pool_mode != "swing":
+                # N3 fuel unspent: no same-day penetration of the pool before
+                # this sweep's own penetration (level-based, per-day pool).
+                # Internal swing pools (ILS) are naturally revisited — no check.
+                fs = day_first[day]
+                if d.name == LONG:
+                    fuel_spent = bool(np.any(lo[fs:sweep.penetration_idx] <= swp_lvl - params.tick))
+                else:
+                    fuel_spent = bool(np.any(hi[fs:sweep.penetration_idx] >= swp_lvl + params.tick))
+                if fuel_spent:
+                    continue
             sweep_extreme = sweep.extreme
             swept_pool = swp_lvl
             sweep_pen_idx = sweep.penetration_idx
@@ -310,17 +324,22 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
                 continue
             # build order levels
             entry = zone.ce
-            # v2.0 TP1 = displacement-leg extreme (sweep penetration bar -> MSS
-            # bar): the internal liquidity this manipulation->displacement leg
-            # actually created — strictly beyond a CE entry, known at placement.
+            # TP1 = displacement-leg extreme (sweep penetration bar -> MSS bar):
+            # the internal liquidity this manipulation->displacement leg actually
+            # created — strictly beyond a CE entry, known at placement.
+            # TP2 = external liquidity: the frozen kz-open DOL pool ("overnight"
+            # mode) or, for ILS, the larger claim above/below — PDH/PDL vs the
+            # session extreme printed so far (both known, no repaint).
             if d.name == LONG:
                 sl0 = sweep_extreme - params.sl_buffer_price
                 tp1 = float(np.max(hi[sweep_pen_idx:i + 1]))
-                tp2 = dol_lvl                    # TP2 = frozen DOL target (kz open)
+                tp2 = (max(dol_lvl, run_hi[i]) if params.pool_mode == "swing"
+                       and np.isfinite(run_hi[i]) else dol_lvl)
             else:
                 sl0 = sweep_extreme + params.sl_buffer_price
                 tp1 = float(np.min(lo[sweep_pen_idx:i + 1]))
-                tp2 = dol_lvl
+                tp2 = (min(dol_lvl, run_lo[i]) if params.pool_mode == "swing"
+                       and np.isfinite(run_lo[i]) else dol_lvl)
             risk_dist = abs(entry - sl0)
             if risk_dist <= 0:
                 reset_setup(); continue

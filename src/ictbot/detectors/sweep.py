@@ -43,11 +43,27 @@ def detect_sweep_at(
     ``direction='bull'`` sweeps liquidity BELOW ``level`` (PDL) and needs a close
     back ABOVE it; ``'bear'`` is the mirror (above PDH, close back below).
     """
+    return sweep_at_arrays(
+        df["high"].to_numpy(dtype=float),
+        df["low"].to_numpy(dtype=float),
+        df["close"].to_numpy(dtype=float),
+        i, level, direction, tick, sweep_close_n,
+    )
+
+
+def sweep_at_arrays(
+    highs: np.ndarray,
+    lows: np.ndarray,
+    closes: np.ndarray,
+    i: int,
+    level: float,
+    direction: str,
+    tick: float,
+    sweep_close_n: int,
+) -> Sweep | None:
+    """Array-based core of :func:`detect_sweep_at` (no per-call conversions)."""
     if i < 1 or not np.isfinite(level):
         return None
-    highs = df["high"].to_numpy(dtype=float)
-    lows = df["low"].to_numpy(dtype=float)
-    closes = df["close"].to_numpy(dtype=float)
 
     if direction == BULL:
         if not (closes[i] > level):                 # must close back above

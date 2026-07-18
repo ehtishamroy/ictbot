@@ -127,7 +127,16 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 
 ---
 
-## Current position
+## Current position (updated after v2.0 + ILS pivot)
+- **NYAM-SWEEP-FVG is ARCHIVED on EURUSD/NY-AM** after two failed versions (spec C5 entries: `reports/NYAM-SWEEP-FVG_archive.md`):
+  - v1.0: 0 trades / 3 years (bias+PDL contradiction; DOL reach vs real ranges).
+  - v2.0 (user-authorized spec revision — overnight pool DEF-LIQ-02, free `dol_reach`, leg-extreme TP1; `docs/spec/NYAM-SWEEP-FVG_v2.0_changes.md`): mechanically correct and trading, but IS grid showed n≤2 in every cell — confluence starvation, session-independent (London cross-check n=3).
+- **Successor: NYAM-ILS-FVG v1.0** (`docs/spec/NYAM-ILS-FVG_v1.0.md`, `config/nyam_ils_fvg_v1.0.yaml`) — intraday confirmed-swing pools (DEF-LIQ-03), no DOL gate, TP2 = max/min(PDH/PDL, session extreme); engine `pool_mode: swing`. **C2/C3 complete on IS: verdict IS-FAIL** — funnel healthy (558 sweeps → 78 MSS → 42 RR-ok → 11 fills), but best tuned cell is n=22 / expectancy −0.026R / PF 0.96, and *every* cell in two bounded grids is negative after costs. The single OOS look was deliberately **NOT consumed** (running it on a negative-IS version would be theater); the 2024 tail stays sealed.
+- **The honest overall finding after three designs on 3 years of real data:** the sweep→MSS→FVG family on EURUSD trades ~0.9/month at realistic definitions and shows no positive expectancy in-sample at honest costs. The machinery is correct (67 tests, hand-verified R, staged funnel instrumentation); the data has simply not shown an edge yet.
+- **User action needed:** 2015–2021 HistData yearly files (same download procedure). That gives a fresh 7-year IS untouched by any of this iteration, with 2022–2024 as a clean OOS for a frozen design — the only statistically honest next step. If long-IS is also flat → archive the family on EURUSD.
+- All work pushed to `claude/ready-to-start-work-m5uwbq`.
+
+## Previous position (v1.0 first real run)
 - **The real validation run happened.** User supplied EURUSD 2022-2024 1-minute data (HistData.com). Ran C1 pre-flight (green) → found and fixed a genuine engine bug (DOL narrative gate was re-evaluated every bar instead of once at 08:30 NY per spec A2) → re-ran → **0 trades over 3 years**, traced to a structural tension between the fixed `dol_reach_atr_1h=3.0` constant and real EURUSD range statistics, not addressable by any of the 7 free parameters. **Status: TESTED-FAIL (insufficient sample).** Full findings: `reports/v1.0_2022-2024_run1_findings.md`. Data lives in `data/raw/EURUSD_M1_histdata/` (source documented in `SOURCE.md`); loader `ictbot.data.load.load_histdata_ascii_m1` handles HistData's fixed-GMT-5 (no-DST) timestamp convention. **60 tests green.**
 - **Decision needed from the user** (deliberately not made unilaterally — the spec reserves fixed-constant changes for a human): archive this concept pair and start a new v1.0 hypothesis on a different instrument/session/concept (per spec C4 step 12), or consciously revise the fixed `dol_reach_atr_1h` constant as a new documented spec version, or reconsider DOL as a hard gate. See the findings doc's "Options" section.
 - Phase 8 (MQL5 EA) still needs a MetaEditor compile + cross-check against Python. Phase 10 (go-live) stays gated on an eventual TESTED-PASS.

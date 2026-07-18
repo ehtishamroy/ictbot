@@ -44,11 +44,18 @@ T0 = time.time()
 def log(msg):
     print(f"[{time.time()-T0:7.1f}s] {msg}", flush=True)
 
+CONFIG = "config/nyam_sweep_fvg_v2.0.yaml"
+for a_i, a in enumerate(sys.argv):
+    if a == "--config" and a_i + 1 < len(sys.argv):
+        CONFIG = sys.argv[a_i + 1]
+
 df1m = pd.read_pickle("/tmp/df1m.pkl")
 df5 = pd.read_pickle("/tmp/df5.pkl")
 df1h = pd.read_pickle("/tmp/df1h.pkl")
-cfg = load_config("config/nyam_sweep_fvg_v2.0.yaml")
+cfg = load_config(CONFIG)
 params = EngineParams.from_config(cfg)
+TAG = f"{cfg.name}_v{cfg.version}"
+log_prefix = TAG
 cm = CostModel(spread_pips=0.8, commission_per_lot_roundturn=7.0, slippage_pips=0.3)
 
 pf = preflight(df5, df1h, params)
@@ -97,7 +104,7 @@ for mw in GRID["mss_window"]:
                 f"exp={mm.expectancy:.3f} pf={mm.profit_factor:.2f} "
                 f"dd={mm.max_dd_r:.1f} t/mo={mm.trades_per_month:.2f}")
 grid_df = pd.DataFrame(rows)
-grid_df.to_csv("reports/v2.0_is_grid.csv", index=False)
+grid_df.to_csv(f"reports/{TAG}_is_grid.csv", index=False)
 eligible = grid_df[grid_df["n"] >= MIN_N].sort_values(["exp", "dd"],
                                                       ascending=[False, True])
 if eligible.empty:
@@ -166,7 +173,7 @@ status = ("TESTED-FAIL" if not gates.passed
           else "GATES-PASS / ROBUSTNESS-FAIL")
 
 report = part_f_report(
-    version="v2.0",
+    version=f"v{cfg.version}",
     window=f"{start.date()}..{end.date()}",
     data_desc=("1m, HistData.com (fixed GMT-5 source -> true UTC); "
                "news filter DISABLED (no calendar source)"),
@@ -178,8 +185,8 @@ report = part_f_report(
     robustness=(robustness.marks() if robustness else None), status=status,
 )
 print("\n== PART F ==\n" + report)
-Path("reports/v2.0_2022-2024_run1.txt").write_text(
+Path(f"reports/{TAG}_run1.txt").write_text(
     report + f"\n\nLocked params: disp_mult={p_lock.disp_mult} "
     f"fvg_min={p_lock.fvg_min} expiry_bars={p_lock.expiry_bars} "
     f"sl_buffer={p_lock.sl_buffer_points} dol_reach={p_lock.dol_reach}\n")
-log("report saved: reports/v2.0_2022-2024_run1.txt")
+log(f"report saved: reports/{TAG}_run1.txt")

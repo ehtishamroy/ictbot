@@ -1,0 +1,73 @@
+# NYAM-ILS-FVG v1.0 — parameter set
+# NEW hypothesis after NYAM-SWEEP-FVG v1.0+v2.0 were archived on EURUSD/NY-AM
+# (two failed versions, per spec C4/C5). Spec: docs/spec/NYAM-ILS-FVG_v1.0.md
+#   * sweep pool = intraday CONFIRMED swing lows/highs (DEF-LIQ-03), per bar
+#   * no DOL existence gate; TP2 = max/min(PDH|PDL, session extreme)
+#   * 7 free parameters (dol_reach not used)
+# Free params may be tuned ONLY within `range`, one pass of <=3 at a time, IS only.
+
+strategy:
+  name: NYAM-ILS-FVG
+  version: "1.0"
+  instrument: EURUSD
+  status: UNTESTED          # UNTESTED | TESTED-FAIL | TESTED-PASS | FORWARD | LIVE-SMALL
+
+# --- Free parameters (A6). cap = 8, using 7. ---
+free_params:
+  sweep_close_n:      {default: 3,   range: [1, 5],    def_id: DEF-SWEEP-01}
+  mss_window:         {default: 12,  range: [6, 20],   def_id: DEF-MSS-01}
+  disp_mult:          {default: 1.5, range: [1.0, 2.5], def_id: DEF-DISP-01}
+  fvg_min_atr:        {default: 0.5, range: [0.3, 1.0], def_id: DEF-FVG-01}
+  expiry_bars:        {default: 15,  range: [8, 24],   def_id: DEF-ENTRY-01}
+  sl_buffer_points:   {default: 2,   range: [0, 10],   def_id: SL-anchor}   # set from MAE p90, NOT grid
+  server_to_ny_off_h: {default: 7,   range: [7, 7],    def_id: DEF-TIME-01}  # broker-verified, NEVER optimized
+
+# --- Fixed constants (A6). Not free, not optimized. ---
+fixed:
+  swing_k_ltf: 1
+  swing_k_htf: 2
+  atr_len: 14
+  fvg_max_atr: 3.0
+  sweep_penetration_ticks: 1
+  entry_level: CE
+  partial_close_pct: 50
+  risk_pct: 0.5
+  max_trades_per_day: 2
+  daily_stop_r: 2.0
+  flat_time_ny: "12:00"
+  max_bars: 42
+  news_window_min: 15
+  news_flat: false
+  max_spread_pips: 1.2
+  shallow_sweep_floor_points: 5
+  dst_week_trade: true
+  sweep_pool: swing         # ILS: intraday confirmed-swing pools (DEF-LIQ-03)
+  dol_reach_atr_1h: 6.0     # unused in swing mode (no DOL gate); kept for engine compat
+
+# --- Session / time (DEF-KZ-01 / DEF-TIME-01). NY wall-clock, DST-aware. ---
+session:
+  timezone: America/New_York
+  killzone: {start: "08:30", end: "11:00"}   # NY AM
+  trading_day_boundary_ny: "17:00"           # PDH/PDL + counter reset
+  htf: "1H"
+  ltf: "5m"
+
+# --- Backtest / validation (Part B). ---
+backtest:
+  data_mode: real_ticks           # reject open-prices/1m-OHLC results
+  min_years: 2
+  min_trades_total: 100
+  min_trades_oos: 30
+  is_oos_split: 0.70              # chronological
+  costs:
+    spread_pips: 0.8             # EURUSD NY AM 75th-pct session (0.6-1.0)
+    commission_per_lot_roundturn: 7.0
+    slippage_pips_market: 0.3
+    cost_stress_multiplier: 1.5  # re-run final at 1.5x
+  gates:                          # B5 — all six must hold on OOS
+    expectancy_r_min: 0.15
+    profit_factor_min: 1.3
+    max_dd_r_max: 12
+    oos_trades_min: 30
+    oos_pf_vs_is_ratio_min: 0.6
+    month_concentration_max_pct: 40

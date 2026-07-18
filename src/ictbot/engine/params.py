@@ -66,6 +66,10 @@ class EngineParams:
     # free-parameter test ranges (A6), keyed by EngineParams field name
     ranges: dict = field(default_factory=dict)
 
+    # sweep-pool definition: "overnight" (DEF-LIQ-02, NYAM-SWEEP-FVG v2.0)
+    # or "swing" (intraday confirmed-swing pools, NYAM-ILS-FVG)
+    pool_mode: str = "overnight"
+
     # mutation helpers (for perturbation / optimisation) ----------------------
     def replace(self, **overrides) -> "EngineParams":
         """Return a copy with the given fields overridden (ranges preserved)."""
@@ -130,4 +134,5 @@ class EngineParams:
             day_boundary=parse_hhmm(s["trading_day_boundary_ny"]),
             ranges={fld: tuple(cfg.free[cfgkey].__dict__[k] for k in ("lo", "hi"))
                     for fld, cfgkey in _FREE_FIELD_TO_CFG.items() if cfgkey in cfg.free},
+            pool_mode=str(f.get("sweep_pool", "overnight")),
         )
