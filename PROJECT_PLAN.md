@@ -84,11 +84,12 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 - [x] Synthetic 1m smoke: full pipeline runs clean, 0 spurious trades on noise (10 new tests, 41 total)
 - [ ] 3-month smoke on REAL data (C1 step 3) — needs data (blocked on egress)
 
-## PHASE 6 — Metrics, gates & Part F reporting
-- [ ] All B4 metrics (R, win%, avgRR, expectancy, PF, maxDD in R & %, streak, trades/mo, MAE/MFE)
-- [ ] Six B5 pass gates evaluated automatically
-- [ ] Monthly net-R concentration table (gate 6)
-- [ ] Part F report generator (paste-ready)
+## PHASE 6 — Metrics, gates & Part F reporting  ✅
+- [x] All B4 metrics (expectancy, PF, maxDD R & %, win%, avgRR, streak, trades/mo, MAE p90 / MFE median) (`reporting/metrics.py`)
+- [x] Six B5 pass gates evaluated automatically (incl. gate 5 stability vs IS PF, gate 6 concentration)
+- [x] Monthly net-R table + concentration fraction (gate 6)
+- [x] Part F report generator — renders exactly to the spec template (`reporting/report.py`)
+- [x] 9 new tests (48 total green); sample report verified visually
 
 ## PHASE 7 — Validation & fine-tuning loop (Part C)
 - [ ] C1 pre-flight (time, day-boundary, smoke) all green
@@ -117,7 +118,10 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **Active phase:** Phases 0–5 done (scaffold, time/data, indicators, detectors, engine, harness). The full backtest pipeline runs end-to-end on synthetic 1m data. Moving to Phase 6 (metrics, gates, Part F report).
+- **Active phase:** Phases 0–6 done. The entire research stack is built and tested: data → engine → harness → metrics → gates → Part F report. **48 tests green.** Everything needed to run a real backtest and get a pass/fail verdict now exists — the only missing ingredient is real data.
 - **Open blocker (environment/policy):**
-  - **Dukascopy egress → 403** — session network policy blocks `datafeed.dukascopy.com`. Everything is built and unit-tested on synthetic data; producing the *actual reportable numbers* (Phases 6–7) needs real tick/1m data: open the network policy, run the downloader elsewhere, or drop CSVs into `data/raw`.
-- **Next action:** Phase 6 — all B4 metrics + the six B5 pass-gates + monthly concentration table + the paste-ready Part F report generator (buildable now; validated against synthetic/fixture trades, then run for real once data lands).
+  - **Dukascopy egress → 403** — session network policy blocks `datafeed.dukascopy.com`. To produce real numbers: open the network policy, run the downloader elsewhere, or drop tick/1m CSVs into `data/raw`. **This is now the critical-path blocker** — Phase 7 (the actual IS/OOS validation run + robustness) cannot produce reportable numbers without it.
+- **Next action (two parallel tracks):**
+  1. **Phase 7 driver** (buildable now): a CLI/notebook that loads data → `backtest()` → `split_is_oos` → `evaluate_gates` → `part_f_report`, plus the robustness harness (±20% perturb, 1.5× cost, ±15min session shift, monthly regime). Wire it end-to-end on synthetic data.
+  2. **Get data** so Phase 7 can be *run for real* (C1 pre-flight → C2 baseline → C4 OOS gate).
+  - Phases 8–9 (MQL5 EA, Pine) are independent of the data blocker.
