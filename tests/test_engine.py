@@ -63,15 +63,19 @@ def test_full_long_trade_tp1_then_tp2():
     assert t["exit_reason"] == "TP2"
     assert bool(t["tp1_hit"]) is True
     assert abs(t["entry"] - 1.0011) < 1e-9
-    # R = 0.5*(TP1-entry)/rd + 0.5*(TP2-entry)/rd, rd = 1.0011-0.99938 = 0.00172
-    assert abs(t["r_total"] - 1.6860) < 5e-3
+    # v2.0 TP1 = displacement-leg high (bars 1-4) = 1.0034; TP2 = PDH 1.0050
+    # rd = 1.0011-0.99938 = 0.00172
+    # R = 0.5*(1.0034-1.0011)/rd + 0.5*(1.0050-1.0011)/rd = 1.8023
+    assert abs(t["tp1"] - 1.0034) < 1e-9
+    assert abs(t["r_total"] - 1.8023) < 5e-3
     assert t["mfe_r"] > 0
 
 
 def test_rr_below_one_is_skipped():
-    # Move the swing high (TP1) close to entry so RR-to-TP1 < 1 -> no trade.
+    # Deepen the sweep so risk dwarfs the leg height (v2.0 TP1 = leg extreme):
+    # extreme 0.9950 -> rd = 1.0011-0.99498 = 0.00612; TP1 dist 0.0023 -> RR 0.38
     df = _features()
-    df["conf_sh"] = 1.0015   # TP1 only ~4 pips over CE vs ~17 pip risk
+    df.iloc[1, df.columns.get_loc("low")] = 0.9950
     trades = run(df, _params(), news=[])
     assert len(trades) == 0
 
@@ -124,8 +128,11 @@ def test_full_short_trade_mirror():
     assert t["exit_reason"] == "TP2"
     assert bool(t["tp1_hit"]) is True
     assert abs(t["entry"] - 1.0037) < 1e-9
-    # rd = 1.00562-1.0037 = 0.00192; R = 0.5*(0.0022 + 0.0037)/0.00192
-    assert abs(t["r_total"] - 1.5365) < 5e-3
+    # v2.0 TP1 = displacement-leg low (bars 1-4) = 1.0010; TP2 = PDL 1.0000
+    # rd = 1.00562-1.0037 = 0.00192
+    # R = 0.5*(1.0037-1.0010)/rd + 0.5*(1.0037-1.0000)/rd = 1.6667
+    assert abs(t["tp1"] - 1.0010) < 1e-9
+    assert abs(t["r_total"] - 1.6667) < 5e-3
 
 
 def test_prepare_features_smoke():

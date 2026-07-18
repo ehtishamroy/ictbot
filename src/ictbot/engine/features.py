@@ -35,6 +35,13 @@ def prepare_features(
     out["pdh"] = lv["pdh"].values
     out["pdl"] = lv["pdl"].values
 
+    # DEF-LIQ-02 (v2.0): running intraday extremes EXCLUDING the current bar.
+    # At the first killzone bar of a day this equals the overnight session
+    # low/high (17:00 NY -> killzone open) — fully known at 08:30, no repaint.
+    g = out.groupby("trading_day")
+    out["day_run_low"] = g["low"].transform(lambda s: s.shift(1).cummin())
+    out["day_run_high"] = g["high"].transform(lambda s: s.shift(1).cummax())
+
     out["in_kz"] = in_killzone_mask(df5.index, params.kz_start, params.kz_end).values
 
     bias_ser = htf_bias_series(df1h, params.swing_k_htf)

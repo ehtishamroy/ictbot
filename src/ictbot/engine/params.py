@@ -26,6 +26,7 @@ _FREE_FIELD_TO_CFG = {
     "fvg_min": "fvg_min_atr",
     "expiry_bars": "expiry_bars",
     "sl_buffer_points": "sl_buffer_points",
+    "dol_reach": "dol_reach_atr",   # free from v2.0; fixed dol_reach_atr_1h in v1.0
 }
 
 
@@ -117,7 +118,8 @@ class EngineParams:
             max_bars=int(f["max_bars"]),
             partial_close_pct=float(f["partial_close_pct"]),
             news_window_min=int(f["news_window_min"]),
-            dol_reach=float(f["dol_reach_atr_1h"]),
+            dol_reach=(float(cfg.p("dol_reach_atr")) if "dol_reach_atr" in cfg.free
+                       else float(f["dol_reach_atr_1h"])),
             max_spread_pips=float(f["max_spread_pips"]),
             shallow_floor_points=float(f["shallow_sweep_floor_points"]),
             point=point,

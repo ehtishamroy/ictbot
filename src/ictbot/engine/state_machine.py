@@ -87,6 +87,13 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
     conf_sl = features["conf_sl"].to_numpy(float)
     pdh = features["pdh"].to_numpy(float)
     pdl = features["pdl"].to_numpy(float)
+    # DEF-LIQ-02 (v2.0): overnight running extremes; absent on older frames
+    if "day_run_low" in features.columns:
+        run_lo = features["day_run_low"].to_numpy(float)
+        run_hi = features["day_run_high"].to_numpy(float)
+    else:
+        run_lo = np.full(n, np.nan)
+        run_hi = np.full(n, np.nan)
     in_kz = features["in_kz"].to_numpy(bool)
     bias = features["bias"].to_numpy(object)
     spread = features["spread"].to_numpy(float)
@@ -107,11 +114,6 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
         if in_kz[i] and dy not in day_kz_open:
             day_kz_open[dy] = op[i]
             day_kz_open_idx[dy] = i
-
-    def swept_before(pool: str, day, upto_excl: int) -> bool:
-        arr = pierced_pdl if pool == "pdl" else pierced_pdh
-        start = day_first[day]
-        return bool(np.any(arr[start:upto_excl]))
 
     def swept_incl(pool: str, day, upto_incl: int) -> bool:
         arr = pierced_pdl if pool == "pdl" else pierced_pdh
@@ -143,6 +145,8 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
     # setup carry
     sweep_extreme = np.nan
     swept_pool = np.nan
+    dol_lvl = np.nan
+    sweep_pen_idx = -1
     swept_bars = 0
     zone = None
     entry = sl0 = sl = tp1 = tp2 = risk_dist = np.nan
@@ -246,8 +250,14 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
                 nd = (_LONG if nb == "BULLISH" else _SHORT if nb == "BEARISH" else None)
                 entry_narrative = None
                 if nd is not None and kz_idx is not None:
-                    n_swp_lvl = pdl[kz_idx] if nd.name == LONG else pdh[kz_idx]
-                    n_dol_lvl = pdh[kz_idx] if nd.name == LONG else pdl[kz_idx]
+                    # DEF-LIQ-02: sweep pool = overnight session extreme, frozen
+                    # at kz open; PDL/PDH fallback when no overnight bars exist.
+                    if nd.name == LONG:
+                        n_swp_lvl = run_lo[kz_idx] if np.isfinite(run_lo[kz_idx]) else pdl[kz_idx]
+                        n_dol_lvl = pdh[kz_idx]
+                    else:
+                        n_swp_lvl = run_hi[kz_idx] if np.isfinite(run_hi[kz_idx]) else pdh[kz_idx]
+                        n_dol_lvl = pdl[kz_idx]
                     if np.isfinite(n_swp_lvl) and np.isfinite(n_dol_lvl):
                         shallow = ((kz_open - n_swp_lvl) < params.shallow_floor_price
                                    if nd.name == LONG
@@ -269,10 +279,18 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
                                     params.tick, params.sweep_close_n)
             if sweep is None:
                 continue
-            if swept_before(d.sweep_pool, day, sweep.penetration_idx):  # N3 fuel unspent
+            # N3 fuel unspent: no same-day penetration of the pool before this
+            # sweep's own penetration (level-based — the pool is per-day now)
+            fs = day_first[day]
+            if d.name == LONG:
+                fuel_spent = bool(np.any(lo[fs:sweep.penetration_idx] <= swp_lvl - params.tick))
+            else:
+                fuel_spent = bool(np.any(hi[fs:sweep.penetration_idx] >= swp_lvl + params.tick))
+            if fuel_spent:
                 continue
             sweep_extreme = sweep.extreme
             swept_pool = swp_lvl
+            sweep_pen_idx = sweep.penetration_idx
             swept_bars = 0
             state = SWEPT
             continue
@@ -292,12 +310,17 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
                 continue
             # build order levels
             entry = zone.ce
+            # v2.0 TP1 = displacement-leg extreme (sweep penetration bar -> MSS
+            # bar): the internal liquidity this manipulation->displacement leg
+            # actually created — strictly beyond a CE entry, known at placement.
             if d.name == LONG:
                 sl0 = sweep_extreme - params.sl_buffer_price
-                tp1, tp2 = swing, pdh[i]
+                tp1 = float(np.max(hi[sweep_pen_idx:i + 1]))
+                tp2 = dol_lvl                    # TP2 = frozen DOL target (kz open)
             else:
                 sl0 = sweep_extreme + params.sl_buffer_price
-                tp1, tp2 = swing, pdl[i]
+                tp1 = float(np.min(lo[sweep_pen_idx:i + 1]))
+                tp2 = dol_lvl
             risk_dist = abs(entry - sl0)
             if risk_dist <= 0:
                 reset_setup(); continue
