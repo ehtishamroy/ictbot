@@ -6,7 +6,8 @@ default: 1 point = 1e-5, 1 pip = 1e-4).
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+import dataclasses
+from dataclasses import dataclass, field
 from datetime import time as dtime
 
 from ..config import Config
@@ -14,6 +15,18 @@ from ..data.nytime import parse_hhmm
 
 POINT_EURUSD = 1e-5
 PIP_EURUSD = 1e-4
+
+# free parameters that must stay integer-valued when perturbed/optimised
+INT_FREE = {"sweep_close_n", "mss_window", "expiry_bars"}
+# EngineParams field name -> config free_params key (names differ for fvg_min)
+_FREE_FIELD_TO_CFG = {
+    "sweep_close_n": "sweep_close_n",
+    "mss_window": "mss_window",
+    "disp_mult": "disp_mult",
+    "fvg_min": "fvg_min_atr",
+    "expiry_bars": "expiry_bars",
+    "sl_buffer_points": "sl_buffer_points",
+}
 
 
 @dataclass(frozen=True)
@@ -48,6 +61,20 @@ class EngineParams:
     kz_end: dtime
     flat_time: dtime
     day_boundary: dtime
+
+    # free-parameter test ranges (A6), keyed by EngineParams field name
+    ranges: dict = field(default_factory=dict)
+
+    # mutation helpers (for perturbation / optimisation) ----------------------
+    def replace(self, **overrides) -> "EngineParams":
+        """Return a copy with the given fields overridden (ranges preserved)."""
+        return dataclasses.replace(self, **overrides)
+
+    def clamp_free(self, field_name: str, value: float) -> float:
+        """Clamp a free-param value to its A6 range and round ints."""
+        lo, hi = self.ranges.get(field_name, (value, value))
+        value = min(max(value, lo), hi)
+        return int(round(value)) if field_name in INT_FREE else value
 
     # derived price distances -------------------------------------------------
     @property
@@ -99,4 +126,6 @@ class EngineParams:
             kz_end=parse_hhmm(kz["end"]),
             flat_time=parse_hhmm(f["flat_time_ny"]),
             day_boundary=parse_hhmm(s["trading_day_boundary_ny"]),
+            ranges={fld: tuple(cfg.free[cfgkey].__dict__[k] for k in ("lo", "hi"))
+                    for fld, cfgkey in _FREE_FIELD_TO_CFG.items() if cfgkey in cfg.free},
         )

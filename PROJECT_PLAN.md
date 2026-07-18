@@ -91,13 +91,16 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 - [x] Part F report generator — renders exactly to the spec template (`reporting/report.py`)
 - [x] 9 new tests (48 total green); sample report verified visually
 
-## PHASE 7 — Validation & fine-tuning loop (Part C)
-- [ ] C1 pre-flight (time, day-boundary, smoke) all green
-- [ ] C2 baseline IS run at defaults + MAE/MFE distribution
-- [ ] C3 bounded IS optimization (≤3 params, coarse grid; `sl_buffer` from MAE p90, not grid)
-- [ ] C4 single OOS look → evaluate 6 gates
-- [ ] B6 robustness: ±20% perturb, 1.5× cost, ±15 min session shift, monthly regime table
-- [ ] Archive log entry if FAIL (C5); iterate to v1.1 with **one** change if warranted
+## PHASE 7 — Validation & fine-tuning loop (Part C)  — driver built ✅ / real run blocked
+- [x] C1 pre-flight (`validation/preflight.py`): time conversion, 17:00 boundary, killzone/PDH-PDL present, no same-bar exit
+- [x] C3 bounded IS optimiser (`validation/optimize.py`): ≤3 params + coarse-grid + no-sl_buffer guards enforced in code; select by expectancy, tie-break maxDD; `suggest_sl_buffer_points` from winners' MAE p90
+- [x] C4 single OOS look → 6 gates (via `evaluate_gates`, Phase 6)
+- [x] B6 robustness (`validation/robustness.py`): ±20% perturb, 1.5× cost, ±15 min session shift, monthly regime table
+- [x] `full_validation` driver + `cli.py` (`python -m ictbot.validation.cli`) + CSV/tick loader (`data/load.py`)
+- [x] Param mutation helpers on `EngineParams` (`replace`, `clamp_free`, ranges) + `perturb`/`set`/`shift_session`
+- [x] 10 new tests (58 total green); driver smoke → TESTED-FAIL on noise as expected
+- [ ] **C2 baseline + C4 OOS run on REAL data** — blocked on data (this is the run that produces the verdict)
+- [ ] Archive log entry if FAIL (C5); iterate to v1.1 with **one** change if warranted — after a real run
 
 ## PHASE 8 — MQL5 EA (forward/live vehicle)
 - [ ] Port A7 state machine to the D2 skeleton, function names matching D1
@@ -118,10 +121,10 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **Active phase:** Phases 0–6 done. The entire research stack is built and tested: data → engine → harness → metrics → gates → Part F report. **48 tests green.** Everything needed to run a real backtest and get a pass/fail verdict now exists — the only missing ingredient is real data.
+- **Active phase:** Phases 0–7 built. The complete research + validation stack exists and is tested end-to-end: data → engine → harness → metrics → gates → robustness → Part F report, runnable via `python -m ictbot.validation.cli`. **58 tests green.**
+- **The ONLY thing left before a verdict is real data.** Everything is wired to run; on real EURUSD tick/1m it does C1 pre-flight → backtest → IS/OOS split → 6 gates → robustness → Part F report automatically.
 - **Open blocker (environment/policy):**
-  - **Dukascopy egress → 403** — session network policy blocks `datafeed.dukascopy.com`. To produce real numbers: open the network policy, run the downloader elsewhere, or drop tick/1m CSVs into `data/raw`. **This is now the critical-path blocker** — Phase 7 (the actual IS/OOS validation run + robustness) cannot produce reportable numbers without it.
-- **Next action (two parallel tracks):**
-  1. **Phase 7 driver** (buildable now): a CLI/notebook that loads data → `backtest()` → `split_is_oos` → `evaluate_gates` → `part_f_report`, plus the robustness harness (±20% perturb, 1.5× cost, ±15min session shift, monthly regime). Wire it end-to-end on synthetic data.
-  2. **Get data** so Phase 7 can be *run for real* (C1 pre-flight → C2 baseline → C4 OOS gate).
-  - Phases 8–9 (MQL5 EA, Pine) are independent of the data blocker.
+  - **Dukascopy egress → 403** — session network policy blocks `datafeed.dukascopy.com`. To produce real numbers: open the network policy for that host, run the downloader elsewhere and drop files in `data/raw`, or hand over tick/1m CSVs (loader auto-detects columns).
+- **Next actions:**
+  1. **Get data**, then run the CLI for the real C2 baseline + C4 OOS verdict.
+  2. **Phase 8 (MQL5 EA)** and **Phase 9 (Pine)** — independent of the data blocker; can proceed anytime.
