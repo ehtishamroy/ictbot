@@ -2,7 +2,8 @@
 
 - Source: HistData.com free "Generic ASCII" 1-minute bar export
 - Instrument: EURUSD
-- Years: 2022, 2023, 2024 (3 full years)
+- Years: 2015-2024 (10 full years; 3,671,080 1-minute bars)
+- Split for validation: IS = 2015-2021 (7 y), OOS = 2022-2024 (3 y)
 - Format: no header, `;`-separated `YYYYMMDD HHMMSS;open;high;low;close;volume`
 - Volume: always 0 in the free feed (not usable as a real volume signal)
 - Timestamps: fixed GMT-5 ("EST"), **no DST adjustment**, per HistData's own
