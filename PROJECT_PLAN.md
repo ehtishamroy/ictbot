@@ -102,11 +102,17 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 - [ ] **C2 baseline + C4 OOS run on REAL data** — blocked on data (this is the run that produces the verdict)
 - [ ] Archive log entry if FAIL (C5); iterate to v1.1 with **one** change if warranted — after a real run
 
-## PHASE 8 — MQL5 EA (forward/live vehicle)
-- [ ] Port A7 state machine to the D2 skeleton, function names matching D1
-- [ ] `CalendarValueHistory` news filter (D5)
-- [ ] `ServerToNYOffsetH` verification harness (never hardcode)
-- [ ] Cross-check MT5 "real ticks" run vs Python numbers (must agree within costs)
+## PHASE 8 — MQL5 EA (forward/live vehicle)  — written ✅ / needs MetaEditor compile + cross-check
+- [x] Full A7 state machine ported (`mql5/NYAM_SWEEP_FVG.mq5`), function names match D1
+- [x] All detectors: sweep, displacement, FVG(+nested), MSS, confirmed swings, HTF bias/BOS-CHoCH, DOL
+- [x] Time layer: `ToNY`, killzone, 17:00-NY boundary, PDH/PDL scan; `ServerToNYOffsetH` verify print on init
+- [x] Guards (2/day, −2R lock via deal history, one-attempt-per-pool), `CalcLots` 0.5% sizing
+- [x] Limit-at-CE pending order + expiry, TP1 50%+SL→BE, TP2, flat@12:00, max_bars
+- [x] `CalendarValueHistory` news filter (USD/EUR high-impact, ±15min)
+- [x] README: compile steps, offset verification, real-ticks-only, Python cross-check, known differences
+- [x] Structural sanity: braces/parens balanced, all lifecycle + DEF-ID functions present
+- [ ] **Compile in MetaEditor** (not possible in this env) + fix any broker-specific issues
+- [ ] Cross-check MT5 real-ticks run vs Python numbers (must agree within costs) — needs data + MT5
 
 ## PHASE 9 — Pine Script (visual validation only)
 - [ ] `ta.pivothigh/low(k,k)`, session `"0830-1100"` NY — eyeball signal placement (D4)
@@ -127,4 +133,5 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
   - **Dukascopy egress → 403** — session network policy blocks `datafeed.dukascopy.com`. To produce real numbers: open the network policy for that host, run the downloader elsewhere and drop files in `data/raw`, or hand over tick/1m CSVs (loader auto-detects columns).
 - **Next actions:**
   1. **Get data**, then run the CLI for the real C2 baseline + C4 OOS verdict.
-  2. **Phase 8 (MQL5 EA)** and **Phase 9 (Pine)** — independent of the data blocker; can proceed anytime.
+  2. **Phase 8 (MQL5 EA)** written — needs a MetaEditor compile + Python cross-check (needs data + MT5).
+  3. **Phase 9 (Pine)** — visual validation script; independent of the data blocker.
