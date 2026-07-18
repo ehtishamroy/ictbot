@@ -61,15 +61,17 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 - [x] `spread_ok()`, `news_clear()` filters (`detectors/filters.py`, A5) — news loader (CSV→event list) still pending
 - [x] 11 new unit tests (26 total green)
 
-## PHASE 4 — Strategy engine (A7 state machine)
-- [ ] Guards block (trades/day, dayR, one position, killzone, spread, news; reset at 17:00 NY)
-- [ ] State machine IDLE → SWEPT → WAIT_RETRACE → IN_TRADE, verbatim per A7
-- [ ] `calc_lots(sl_points, risk_pct)` — 0.5% risk sizing (A4, mandatory)
-- [ ] Entry: limit at CE, expiry logic, **skip if RR-to-TP1 < 1.0**
-- [ ] Exits: TP1 (close 50% + SL→BE), TP2 @ PDH, flat @ 12:00 NY, `max_bars`
-- [ ] Account guards: 2 trades/day, −2R daily stop, no re-entry same pool
-- [ ] Full short-side mirror
-- [ ] Trade record: entry, exit, R, MAE, MFE
+## PHASE 4 — Strategy engine (A7 state machine)  ✅
+- [x] `EngineParams` (points/pips → price distances) + `prepare_features` (all look-ahead-safe inputs)
+- [x] Guards block (trades/day, dayR, killzone; reset at 17:00-NY boundary)
+- [x] State machine IDLE → SWEPT → WAIT_RETRACE → IN_TRADE, per A7 (`engine/state_machine.py`)
+- [x] Entry: limit at CE, trade-through-by-1-tick fill, expiry/killzone-end cancel, **skip if RR-to-TP1 < 1.0**, spread+news gate at fill
+- [x] Exits: TP1 (close 50% + SL→BE), TP2 @ PDH/PDL, flat @ 12:00 NY, `max_bars`; conservative stop-first on same-bar ambiguity; mgmt starts next bar (no same-bar entry+exit)
+- [x] Account guards: 2 trades/day, −2R daily lock, one-attempt-per-pool/day
+- [x] Full short-side mirror (sign-parameterised; verified 1.536R vs long 1.686R)
+- [x] Trade record: entry, exit, R, MAE, MFE, reason (5 engine tests; 31 total green)
+- [ ] `calc_lots(sl_points, risk_pct)` currency sizing — deferred to Phase 5/8 (R accounting is size-independent)
+- Note: costs NOT applied here (gross R); Phase 5 harness wraps with the mandatory cost model.
 
 ## PHASE 5 — Backtest harness (B1/B2 + no look-ahead)
 - [ ] Event-driven per-5m-bar loop (D3)
@@ -112,7 +114,7 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **Active phase:** Phases 0–3 done (scaffold, time/data layer, indicators, detectors). Moving to Phase 4 (state machine engine).
+- **Active phase:** Phases 0–4 done (scaffold, time/data, indicators, detectors, engine). The strategy now produces trade records end-to-end on synthetic data. Moving to Phase 5 (backtest harness).
 - **Open blocker (environment/policy):**
-  - **Dukascopy egress → 403** — the session's network policy blocks `datafeed.dukascopy.com`. Downloader code is ready; it needs either a more permissive network policy, or the user runs it where there's internet, or provides CSVs into `data/raw`. Only bites at Phase 5 (backtest run).
-- **Next action:** Phase 4 — the A7 state machine (IDLE→SWEPT→WAIT_RETRACE→IN_TRADE) + guards + risk sizing, wiring the detectors together into trade records.
+  - **Dukascopy egress → 403** — the session's network policy blocks `datafeed.dukascopy.com`. Downloader code is ready; it needs a more permissive network policy, the user running it where there's internet, or CSVs dropped into `data/raw`. **This now bites: Phase 5+ need real tick/1m data to produce any real numbers.**
+- **Next action:** Phase 5 — 1-minute intrabar fill model + mandatory cost model (spread/commission/slippage, 1.0× & 1.5×) + IS/OOS split plumbing + 3-month smoke test.

@@ -16,6 +16,7 @@ import pandas as pd
 
 from ..indicators.structure import DOWN, UP, compute_structure
 from ..indicators.swings import compute_swings
+from ..tsutil import asof_closed
 
 BULLISH, BEARISH, NEUTRAL = "BULLISH", "BEARISH", "NEUTRAL"
 
@@ -34,13 +35,6 @@ def bias_at(bias_series: pd.Series, ts) -> str:
 
     HTF bars are left-labelled/right-open, so a bar labelled T covers [T, T+1h).
     A bar is only usable once it has closed, i.e. its label is strictly before the
-    LTF bar's open time. Uses the label < ts (searchsorted 'left').
+    LTF bar's open time.
     """
-    ts = pd.Timestamp(ts)
-    idx = bias_series.index
-    if idx.tz is not None:
-        ts = ts.tz_localize(idx.tz) if ts.tzinfo is None else ts.tz_convert(idx.tz)
-    pos = idx.searchsorted(ts, side="left") - 1
-    if pos < 0:
-        return NEUTRAL
-    return str(bias_series.iloc[pos])
+    return str(asof_closed(bias_series, ts, default=NEUTRAL))
