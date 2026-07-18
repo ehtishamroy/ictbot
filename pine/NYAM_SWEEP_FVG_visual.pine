@@ -1,0 +1,114 @@
+//@version=5
+// NYAM-SWEEP-FVG — VISUAL VALIDATION ONLY (spec D4).
+// Eyeball signal placement against the chart. Pine's LTF fill assumptions are
+// optimistic — NUMBERS COME FROM MT5/PYTHON ONLY. This is an indicator, not a
+// strategy, on purpose: it plots killzone, PDH/PDL (17:00-NY day), confirmed
+// swings (k bars late), sweeps, displacement, MSS, and FVG zones so you can
+// confirm the mechanical rules line up with the engine.
+indicator("NYAM-SWEEP-FVG Visual", shorttitle="NYAM-SFVG", overlay=true,
+     max_boxes_count=500, max_labels_count=500, max_lines_count=500)
+
+// ------------------------- inputs (mirror A6) -------------------------
+kLtf     = input.int(1,    "Swing k (LTF)", minval=1, group="Structure")
+sweepN   = input.int(3,    "sweep_close_n", minval=1, maxval=5, group="Trigger")
+mssWin   = input.int(12,   "mss_window", minval=6, maxval=20, group="Trigger")
+dispMult = input.float(1.5,"disp_mult", minval=1.0, maxval=2.5, step=0.1, group="Trigger")
+dispMax  = input.float(4.0,"disp_max (reject)", group="Trigger")
+fvgMin   = input.float(0.5,"fvg_min x ATR", minval=0.3, maxval=1.0, step=0.1, group="FVG")
+fvgMax   = input.float(3.0,"fvg_max x ATR", group="FVG")
+atrLen   = input.int(14,   "ATR length", group="General")
+kzSess   = input.session("0830-1100", "NY AM killzone", group="Session")
+
+tz  = "America/New_York"
+atr = ta.atr(atrLen)
+mintick = syminfo.mintick
+
+// ------------------------- killzone shading -------------------------
+inKZ = not na(time(timeframe.period, kzSess, tz))
+bgcolor(inKZ ? color.new(color.blue, 92) : na, title="Killzone")
+
+// ------------------------- PDH/PDL on the 17:00-NY day -------------------------
+// Shift NY time by +7h so the trading-day boundary (17:00 NY) aligns to a
+// calendar-day rollover; the day-of-month then changes exactly at 17:00 NY.
+shifted = time + 7 * 60 * 60 * 1000
+newTD = na(shifted[1]) or dayofmonth(shifted, tz) != dayofmonth(shifted[1], tz)
+
+var float curHigh = na
+var float curLow  = na
+var float pdh = na
+var float pdl = na
+if newTD
+    pdh := curHigh
+    pdl := curLow
+    curHigh := high
+    curLow  := low
+else
+    curHigh := na(curHigh) ? high : math.max(curHigh, high)
+    curLow  := na(curLow)  ? low  : math.min(curLow, low)
+
+plot(pdh, "PDH", color=color.new(color.orange, 0), style=plot.style_linebr, linewidth=1)
+plot(pdl, "PDL", color=color.new(color.teal, 0),  style=plot.style_linebr, linewidth=1)
+
+// ------------------------- confirmed swings (DEF-SWING-01) -------------------------
+ph = ta.pivothigh(high, kLtf, kLtf)   // confirms kLtf bars late (no repaint)
+pl = ta.pivotlow(low,  kLtf, kLtf)
+plotshape(not na(ph), title="Swing High", style=shape.triangledown, location=location.abovebar,
+     color=color.new(color.gray, 40), size=size.tiny, offset=-kLtf)
+plotshape(not na(pl), title="Swing Low", style=shape.triangleup, location=location.belowbar,
+     color=color.new(color.gray, 40), size=size.tiny, offset=-kLtf)
+
+// most recent confirmed swing levels (as of now)
+lastSH = ta.valuewhen(not na(ph), ph, 0)
+lastSL = ta.valuewhen(not na(pl), pl, 0)
+
+// ------------------------- sweep (DEF-SWEEP-01) -------------------------
+var int penLowBar  = na
+var int penHighBar = na
+if not na(pdl) and low  <= pdl - mintick
+    penLowBar  := bar_index
+if not na(pdh) and high >= pdh + mintick
+    penHighBar := bar_index
+
+bullSweep = not na(pdl) and ta.crossover(close, pdl)  and not na(penLowBar)  and (bar_index - penLowBar  <= sweepN)
+bearSweep = not na(pdh) and ta.crossunder(close, pdh) and not na(penHighBar) and (bar_index - penHighBar <= sweepN)
+plotshape(bullSweep and inKZ, title="Sweep PDL", style=shape.labelup, location=location.belowbar,
+     color=color.new(color.green, 0), textcolor=color.white, text="swept", size=size.tiny)
+plotshape(bearSweep and inKZ, title="Sweep PDH", style=shape.labeldown, location=location.abovebar,
+     color=color.new(color.red, 0), textcolor=color.white, text="swept", size=size.tiny)
+
+// ------------------------- displacement (DEF-DISP-01) -------------------------
+body   = math.abs(close - open)
+dispUp = close > open and body >= dispMult * atr and body <= dispMax * atr
+dispDn = close < open and body >= dispMult * atr and body <= dispMax * atr
+
+// ------------------------- MSS (DEF-MSS-01, simplified visual) -------------------------
+mssBull = not na(lastSH) and close > lastSH and dispUp and inKZ
+mssBear = not na(lastSL) and close < lastSL and dispDn and inKZ
+plotshape(mssBull, title="MSS up", style=shape.labelup, location=location.belowbar,
+     color=color.new(color.lime, 0), textcolor=color.black, text="MSS", size=size.tiny)
+plotshape(mssBear, title="MSS down", style=shape.labeldown, location=location.abovebar,
+     color=color.new(color.maroon, 0), textcolor=color.white, text="MSS", size=size.tiny)
+
+// ------------------------- FVG zones (DEF-FVG-01) -------------------------
+bullGap = low > high[2]
+bearGap = high < low[2]
+ghB = low - high[2]
+ghS = low[2] - high
+if bullGap and ghB >= fvgMin * atr and ghB <= fvgMax * atr
+    box.new(bar_index - 2, low, bar_index + 3, high[2],
+         border_color=color.new(color.green, 30), bgcolor=color.new(color.green, 85))
+    ceB = 0.5 * (low + high[2])
+    line.new(bar_index - 2, ceB, bar_index + 3, ceB, color=color.new(color.green, 0), style=line.style_dotted)
+if bearGap and ghS >= fvgMin * atr and ghS <= fvgMax * atr
+    box.new(bar_index - 2, low[2], bar_index + 3, high,
+         border_color=color.new(color.red, 30), bgcolor=color.new(color.red, 85))
+    ceS = 0.5 * (low[2] + high)
+    line.new(bar_index - 2, ceS, bar_index + 3, ceS, color=color.new(color.red, 0), style=line.style_dotted)
+
+// Reminder watermark: this is visual only.
+var label note = na
+if barstate.islast
+    label.delete(note)
+    note := label.new(bar_index, high, "VISUAL ONLY — numbers from MT5/Python",
+         style=label.style_label_down, color=color.new(color.gray, 20),
+         textcolor=color.white, size=size.small)

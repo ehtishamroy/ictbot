@@ -114,9 +114,10 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 - [ ] **Compile in MetaEditor** (not possible in this env) + fix any broker-specific issues
 - [ ] Cross-check MT5 real-ticks run vs Python numbers (must agree within costs) — needs data + MT5
 
-## PHASE 9 — Pine Script (visual validation only)
-- [ ] `ta.pivothigh/low(k,k)`, session `"0830-1100"` NY — eyeball signal placement (D4)
-- [ ] Explicitly not a source of numbers
+## PHASE 9 — Pine Script (visual validation only)  ✅
+- [x] `pine/NYAM_SWEEP_FVG_visual.pine` — killzone shading, 17:00-NY PDH/PDL, confirmed swings (`ta.pivothigh/low(k,k)`, k bars late), sweeps, displacement/MSS, FVG zones + CE
+- [x] Session `"0830-1100"` with `America/New_York` (DST-correct); indicator (not strategy) by design
+- [x] `VISUAL ONLY` watermark + README — explicitly not a source of numbers (D4)
 
 ## PHASE 10 — Go-live ladder (Part E) — only after TESTED-PASS
 - [ ] Forward/demo ≥ 40 trades or 8 weeks (later of the two), expectancy > 0
@@ -127,11 +128,11 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **Active phase:** Phases 0–7 built. The complete research + validation stack exists and is tested end-to-end: data → engine → harness → metrics → gates → robustness → Part F report, runnable via `python -m ictbot.validation.cli`. **58 tests green.**
-- **The ONLY thing left before a verdict is real data.** Everything is wired to run; on real EURUSD tick/1m it does C1 pre-flight → backtest → IS/OOS split → 6 gates → robustness → Part F report automatically.
+- **All buildable phases are done (0–9).** The complete research + validation stack plus the MQL5 EA and Pine visual script are written and (for Python) tested end-to-end: data → engine → harness → metrics → gates → robustness → Part F report, runnable via `python -m ictbot.validation.cli`. **58 tests green.**
+- **The only remaining work needs external inputs:**
+  - **Real data** to run the actual C2 baseline + C4 OOS verdict (Phase 7 run).
+  - **MetaEditor + MT5** to compile the EA and cross-check it against the Python numbers (Phase 8 finish).
+  - **A TESTED-PASS** before any of Phase 10 (go-live ladder) applies.
 - **Open blocker (environment/policy):**
   - **Dukascopy egress → 403** — session network policy blocks `datafeed.dukascopy.com`. To produce real numbers: open the network policy for that host, run the downloader elsewhere and drop files in `data/raw`, or hand over tick/1m CSVs (loader auto-detects columns).
-- **Next actions:**
-  1. **Get data**, then run the CLI for the real C2 baseline + C4 OOS verdict.
-  2. **Phase 8 (MQL5 EA)** written — needs a MetaEditor compile + Python cross-check (needs data + MT5).
-  3. **Phase 9 (Pine)** — visual validation script; independent of the data blocker.
+- **Next action:** get EURUSD tick/1m data, then run `python -m ictbot.validation.cli` for the real verdict. Everything else (EA compile, go-live) follows from that.
