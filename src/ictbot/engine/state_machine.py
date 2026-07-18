@@ -25,6 +25,7 @@ from ..detectors.dol import dol_exists
 from ..detectors.filters import news_clear, spread_ok
 from ..detectors.mss import mss_confirmed
 from ..detectors.sweep import detect_sweep_at
+from .fills import BarFillModel
 from .params import EngineParams
 
 IDLE, SWEPT, WAIT_RETRACE, IN_TRADE = "IDLE", "SWEPT", "WAIT_RETRACE", "IN_TRADE"
@@ -64,9 +65,15 @@ _LONG = _DirSpec(LONG, +1, "bull", "bull", "pdl", "pdh")
 _SHORT = _DirSpec(SHORT, -1, "bear", "bear", "pdh", "pdl")
 
 
-def run(features: pd.DataFrame, params: EngineParams, news=None) -> pd.DataFrame:
-    """Run the state machine over ``features``; return a DataFrame of trades."""
+def run(features: pd.DataFrame, params: EngineParams, news=None,
+        fill_model=None) -> pd.DataFrame:
+    """Run the state machine over ``features``; return a DataFrame of trades.
+
+    ``fill_model`` resolves intrabar fills/exits (default: conservative
+    :class:`BarFillModel`; pass an ``IntrabarFillModel`` for 1-minute resolution).
+    """
     news = list(news or [])
+    fill_model = fill_model or BarFillModel()
     idx = features.index
     n = len(features)
 
@@ -166,28 +173,26 @@ def run(features: pd.DataFrame, params: EngineParams, news=None) -> pd.DataFrame
 
             closed = False
             if not tp1_hit:
-                sl_hit = lo[i] <= sl if d.name == LONG else hi[i] >= sl
-                tp1_bar = hi[i] >= tp1 if d.name == LONG else lo[i] <= tp1
-                if sl_hit:                        # stop assumed first if both
+                ev = fill_model.pre_tp1(idx[i], hi[i], lo[i], entry, sl, tp1, d.name)
+                if ev == "SL":                    # stop assumed first if both
                     r_accum += sgn * (sl0 - entry) / risk_dist * remaining
                     _close(trades, d, day, entry_time, entry, sl0, tp1, tp2,
                            idx[i], "SL", r_accum, tp1_hit, mae, mfe, swept_pool, risk_dist)
                     closed = True
-                elif tp1_bar:
+                elif ev == "TP1":
                     frac = params.partial_close_pct / 100.0
                     r_accum += sgn * (tp1 - entry) / risk_dist * frac
                     remaining -= frac
                     tp1_hit = True
                     sl = entry                    # break-even
             else:
-                sl_hit = lo[i] <= sl if d.name == LONG else hi[i] >= sl
-                tp2_bar = hi[i] >= tp2 if d.name == LONG else lo[i] <= tp2
-                if sl_hit:
+                ev = fill_model.post_tp1(idx[i], hi[i], lo[i], entry, sl, tp2, d.name)
+                if ev == "SL":
                     r_accum += sgn * (sl - entry) / risk_dist * remaining  # ~0 at BE
                     _close(trades, d, day, entry_time, entry, sl0, tp1, tp2,
                            idx[i], "BE_STOP", r_accum, tp1_hit, mae, mfe, swept_pool, risk_dist)
                     closed = True
-                elif tp2_bar:
+                elif ev == "TP2":
                     r_accum += sgn * (tp2 - entry) / risk_dist * remaining
                     _close(trades, d, day, entry_time, entry, sl0, tp1, tp2,
                            idx[i], "TP2", r_accum, tp1_hit, mae, mfe, swept_pool, risk_dist)
@@ -289,10 +294,8 @@ def run(features: pd.DataFrame, params: EngineParams, news=None) -> pd.DataFrame
             wait_bars += 1
             if wait_bars > params.expiry_bars or ny_t >= params.kz_end:
                 reset_setup(); continue
-            reached_tp1 = hi[i] >= tp1 if d.name == LONG else lo[i] <= tp1
-            filled = (lo[i] <= entry - params.tick if d.name == LONG
-                      else hi[i] >= entry + params.tick)   # trade-through by >=1 tick
-            if filled:
+            ev = fill_model.wait(idx[i], hi[i], lo[i], entry, tp1, params.tick, d.name)
+            if ev == "FILL":
                 if not (spread_ok(spread[i], params.max_spread_pips, params.pip)
                         and news_clear(idx[i], news, params.news_window_min)):
                     reset_setup(); continue        # blocked at fill time
@@ -305,7 +308,7 @@ def run(features: pd.DataFrame, params: EngineParams, news=None) -> pd.DataFrame
                 mae = mfe = 0.0
                 state = IN_TRADE
                 continue
-            if reached_tp1:                        # ran to target without filling
+            if ev == "TP1_FIRST":                  # ran to target without filling
                 reset_setup(); continue
             continue
 

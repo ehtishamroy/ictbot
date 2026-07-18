@@ -73,13 +73,16 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 - [ ] `calc_lots(sl_points, risk_pct)` currency sizing — deferred to Phase 5/8 (R accounting is size-independent)
 - Note: costs NOT applied here (gross R); Phase 5 harness wraps with the mandatory cost model.
 
-## PHASE 5 — Backtest harness (B1/B2 + no look-ahead)
-- [ ] Event-driven per-5m-bar loop (D3)
-- [ ] **Intrabar fill model** using 1m/tick data (SL-vs-TP "which first")
-- [ ] Trade-through-by-1-tick rule for limit fills (kills phantom fills)
-- [ ] Cost model: spread (75th pct session), $7/lot commission, 0.3 pip slippage; **1.0× and 1.5× runs**
-- [ ] IS/OOS chronological split (70/30) plumbing; OOS locked to one look
-- [ ] Smoke test on 3 months (C1 step 3): no same-bar entry+exit, states follow A7
+## PHASE 5 — Backtest harness (B1/B2 + no look-ahead)  ✅
+- [x] Event-driven per-5m-bar loop (the engine `run()`, D3)
+- [x] **Intrabar fill model** using 1m data — walks sub-bars in time order to resolve SL-vs-TP "which first" (`engine/fills.py IntrabarFillModel`); `BarFillModel` default unchanged
+- [x] Fill decisions refactored behind a `FillModel` seam (31 prior tests still green)
+- [x] Trade-through-by-1-tick rule for limit fills (in both fill models)
+- [x] Cost model in R: spread + $7/lot commission + 0.3 pip slippage (market exits only); `multiplier` for **1.0× and 1.5×** (`backtest/costs.py`)
+- [x] IS/OOS chronological split by date (70/30) (`backtest/harness.py split_is_oos`)
+- [x] `backtest()` orchestration (features → engine → costs)
+- [x] Synthetic 1m smoke: full pipeline runs clean, 0 spurious trades on noise (10 new tests, 41 total)
+- [ ] 3-month smoke on REAL data (C1 step 3) — needs data (blocked on egress)
 
 ## PHASE 6 — Metrics, gates & Part F reporting
 - [ ] All B4 metrics (R, win%, avgRR, expectancy, PF, maxDD in R & %, streak, trades/mo, MAE/MFE)
@@ -114,7 +117,7 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **Active phase:** Phases 0–4 done (scaffold, time/data, indicators, detectors, engine). The strategy now produces trade records end-to-end on synthetic data. Moving to Phase 5 (backtest harness).
+- **Active phase:** Phases 0–5 done (scaffold, time/data, indicators, detectors, engine, harness). The full backtest pipeline runs end-to-end on synthetic 1m data. Moving to Phase 6 (metrics, gates, Part F report).
 - **Open blocker (environment/policy):**
-  - **Dukascopy egress → 403** — the session's network policy blocks `datafeed.dukascopy.com`. Downloader code is ready; it needs a more permissive network policy, the user running it where there's internet, or CSVs dropped into `data/raw`. **This now bites: Phase 5+ need real tick/1m data to produce any real numbers.**
-- **Next action:** Phase 5 — 1-minute intrabar fill model + mandatory cost model (spread/commission/slippage, 1.0× & 1.5×) + IS/OOS split plumbing + 3-month smoke test.
+  - **Dukascopy egress → 403** — session network policy blocks `datafeed.dukascopy.com`. Everything is built and unit-tested on synthetic data; producing the *actual reportable numbers* (Phases 6–7) needs real tick/1m data: open the network policy, run the downloader elsewhere, or drop CSVs into `data/raw`.
+- **Next action:** Phase 6 — all B4 metrics + the six B5 pass-gates + monthly concentration table + the paste-ready Part F report generator (buildable now; validated against synthetic/fixture trades, then run for real once data lands).
