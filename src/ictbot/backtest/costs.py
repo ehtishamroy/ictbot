@@ -30,10 +30,16 @@ class CostModel:
     multiplier: float = 1.0
 
     def _market_frac(self, tp1_hit: bool, exit_reason: str) -> float:
-        """Fraction of the position closed via a market/stop execution."""
+        """Fraction of the position closed via a market/stop execution.
+
+        Limit take-profits (TP1, TP2, single TP) pay no slippage; stop/flat/max
+        exits are market executions and do. Works for both the sweep engine's
+        TP1/TP2 structure and a single-target engine (FVGC).
+        """
         if not tp1_hit:
-            return 1.0                       # whole position exits on one event
-        # TP1 leg is a limit (no slippage); the runner may exit market or at TP2
+            # whole position exits on one event: limit TP vs market stop/flat
+            return 0.0 if exit_reason in ("TP", "TP2") else 1.0
+        # TP1 leg is a limit (no slippage); the runner exits at TP2 (limit) or market
         return 0.0 if exit_reason == "TP2" else 0.5
 
     def cost_r(self, risk_distance: float, tp1_hit: bool, exit_reason: str) -> float:

@@ -78,6 +78,10 @@ class IntrabarFillModel:
     def _sub(self, ts):
         return self._groups.get(pd.Timestamp(ts))
 
+    def sub_bars(self, ts):
+        """Public: (high[], low[]) of the 1m sub-bars for a 5m bar, or None."""
+        return self._groups.get(pd.Timestamp(ts))
+
     def pre_tp1(self, ts, hi, lo, entry, sl, tp1, direction):
         sub = self._sub(ts)
         if sub is None:

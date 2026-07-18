@@ -1,0 +1,47 @@
+# EURUSD-FVGC v1.0 — Fair Value Gap Continuation
+# Pre-registered: docs/spec/PREREG_EURUSD-FVGC_v1.0.md (locked before tuning).
+# Fresh hypothesis, single trigger concept (FVG), EMA trend context.
+
+strategy:
+  name: EURUSD-FVGC
+  version: "1.0"
+  instrument: EURUSD
+  status: UNTESTED
+
+# --- Free parameters. cap 6 (deliberately small; every knob inflates PBO). ---
+free_params:
+  ema_len:          {default: 50,  range: [20, 100], def_id: TREND}
+  fvg_min_atr:      {default: 0.3, range: [0.2, 0.6], def_id: DEF-FVG-01}
+  disp_mult:        {default: 1.0, range: [0.8, 1.5], def_id: DEF-DISP-01}
+  rr_target:        {default: 2.0, range: [1.5, 3.0], def_id: EXIT}
+  sl_buffer_points: {default: 2,   range: [0, 10],    def_id: SL-anchor}  # from MAE, not gridded
+  expiry_bars:      {default: 6,   range: [3, 12],    def_id: ENTRY}
+
+# --- Fixed constants. ---
+fixed:
+  atr_len: 14
+  fvg_max_atr: 3.0
+  disp_max_atr: 4.0
+  risk_pct: 0.5
+  max_trades_per_day: 4
+  daily_stop_r: 2.0
+  max_hold_bars: 48          # 4h in 5m
+  max_spread_pips: 1.2
+  entry_edge: proximal        # near edge of the FVG (high fill rate)
+
+# --- Session (fixed UTC window: London open -> NY overlap). ---
+session:
+  timezone: UTC
+  start_utc_h: 7
+  end_utc_h: 16
+
+# --- Backtest / validation (pre-reg: cost-robustness LEADS). ---
+backtest:
+  is_end: "2022-01-01"        # IS 2015-2021, OOS 2022-2024
+  costs:
+    spread_pips: 0.8
+    commission_per_lot_roundturn: 7.0
+    slippage_pips_market: 0.3
+  gates:
+    oos_trades_min: 100        # raised from 30 per the evidence report
+    cost_stress_multipliers: [1.5, 2.0]   # PRIMARY: expectancy>0 at both

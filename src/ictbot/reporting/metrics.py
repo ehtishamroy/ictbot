@@ -131,7 +131,8 @@ class GateResult:
 
 
 def evaluate_gates(is_trades: pd.DataFrame, oos_trades: pd.DataFrame,
-                   risk_pct: float = 0.5, r_col: str | None = None) -> GateResult:
+                   risk_pct: float = 0.5, r_col: str | None = None,
+                   oos_trades_min: int = G_OOS_TRADES) -> GateResult:
     is_m = compute_metrics(is_trades, r_col, risk_pct)
     oos_m = compute_metrics(oos_trades, r_col, risk_pct)
     monthly = monthly_net_r(oos_trades, r_col)
@@ -140,7 +141,7 @@ def evaluate_gates(is_trades: pd.DataFrame, oos_trades: pd.DataFrame,
     g1 = oos_m.expectancy >= G_EXPECTANCY
     g2 = oos_m.profit_factor >= G_PF
     g3 = oos_m.max_dd_r <= G_MAX_DD_R and oos_m.n > 0
-    g4 = oos_m.n >= G_OOS_TRADES
+    g4 = oos_m.n >= oos_trades_min
     g5 = np.isfinite(is_m.profit_factor) and oos_m.profit_factor >= G_STABILITY_RATIO * is_m.profit_factor
     g6 = conc <= G_MONTH_CONCENTRATION  # NaN -> False
     return GateResult(
