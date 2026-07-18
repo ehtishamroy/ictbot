@@ -127,7 +127,13 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 
 ---
 
-## Current position (updated after v2.0 + ILS pivot)
+## Current position (after full 10-year validation)
+- **NYAM-ILS-FVG v1.0: TESTED-FAIL out-of-sample** on the full 10-year sample (IS 2015-2021 / OOS 2022-2024, 3.67M 1m bars). Tuned on the fresh 2015-2021 IS only (best cell +0.49R IS), locked, single OOS look on 2022-2024: **OOS expectancy −0.13R, PF 0.79, −0.34R at 1.5× costs; gates 1/2/4/6 fail.** The in-sample edge did not survive out-of-sample (overfit, correctly caught). Full writeup: `reports/NYAM-ILS-FVG_v1.0_findings.md`; machine report: `reports/NYAM-ILS-FVG_v1.0_10y_run.txt`.
+- **ARCHIVED — this is the 3rd failed variant of the sweep→MSS→FVG family on EURUSD/NY-AM** (NYAM-SWEEP-FVG v1.0, v2.0; NYAM-ILS-FVG v1.0). Per the spec's own rule ("archived, not tortured until it confesses"), the concept family is done on this instrument/session. A structural frequency floor (~0.65 trades/mo → ~78 lifetime < 100-trade minimum) means it is effectively unvalidatable in this form regardless.
+- **Honest overall conclusion:** across 3 designs and 10 years of real data under correct IS/OOS discipline and realistic costs, no durable edge was demonstrated. The system worked — it found and *rejected* an overfit rather than shipping one. That is the correct, valuable outcome. **Decision on any genuinely new direction (different session/concept, still EURUSD) is the user's** — I will not keep patching an archived concept.
+- 67 tests green; report label bug fixed (`strategy_name` param). All pushed.
+
+## Earlier position (after v2.0 + ILS pivot)
 - **NYAM-SWEEP-FVG is ARCHIVED on EURUSD/NY-AM** after two failed versions (spec C5 entries: `reports/NYAM-SWEEP-FVG_archive.md`):
   - v1.0: 0 trades / 3 years (bias+PDL contradiction; DOL reach vs real ranges).
   - v2.0 (user-authorized spec revision — overnight pool DEF-LIQ-02, free `dol_reach`, leg-extreme TP1; `docs/spec/NYAM-SWEEP-FVG_v2.0_changes.md`): mechanically correct and trading, but IS grid showed n≤2 in every cell — confluence starvation, session-independent (London cross-check n=3).

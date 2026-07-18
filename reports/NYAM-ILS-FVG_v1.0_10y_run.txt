@@ -1,0 +1,35 @@
+Strategy: NYAM-SWEEP-FVG v1.0   Instrument/Session: EURUSD / NY AM
+Window: IS 2015-2021 / OOS 2022-2024 (EURUSD)   Data: 1m HistData (fixed GMT-5->UTC); news filter DISABLED (no calendar)   MT5 mode: n/a (Python, 1-minute intrabar fills)
+Costs: spread=0.8pip commission=$7/lot slippage=0.3pip (1.0x; 1.5x OOS exp=-0.336)
+
+IS : trades=48  win%=56.2  avgRR=0.92  expectancy(R)=0.20  PF=1.18  maxDD(R)=36.95  streak=6
+OOS: trades=23  win%=60.9  avgRR=0.51  expectancy(R)=-0.13  PF=0.79  maxDD(R)=4.64  streak=2
+Trades/month = 0.65        MAE p90 (winners) = 1.90        MFE median = 1.03
+
+Monthly net R table (OOS):
+  2022-01: -0.98
+  2022-04: -0.55
+  2022-05: -1.09
+  2022-06: 1.31
+  2022-10: 0.09
+  2022-11: 0.99
+  2022-12: 0.79
+  2023-03: 0.10
+  2023-07: -1.18
+  2023-08: -1.42
+  2023-11: 0.80
+  2023-12: -1.92
+  2024-04: 1.36
+  2024-05: 0.77
+  2024-10: -1.27
+  2024-11: -1.77
+  2024-12: 1.10
+
+Gates: 1[ ] 2[ ] 3[x] 4[ ] 5[x] 6[ ]   ->  FAIL
+Robustness (if gates passed): perturb[ ] cost1.5x[ ] session±15[ ] monthly[ ]
+
+Status: TESTED-FAIL. Performance reported against the B5 gates only.
+
+LOCKED PARAMS (selected on IS 2015-2021 only): mss_window=20 fvg_min=0.5 expiry_bars=8 disp_mult=1.5 sweep_close_n=1 sl_buffer_points=10
+IS (intrabar): n=48 exp=0.202 PF=1.18
+OOS @1.5x costs: exp=-0.336 PF=0.54

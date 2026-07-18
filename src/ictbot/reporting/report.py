@@ -48,13 +48,14 @@ def part_f_report(
     risk_pct: float = 0.5,
     robustness: dict | None = None,
     status: str = "UNTESTED",
+    strategy_name: str = "NYAM-SWEEP-FVG",
 ) -> str:
     is_m = compute_metrics(is_trades, r_col, risk_pct)
     oos_m = compute_metrics(oos_trades, r_col, risk_pct)
     monthly = monthly_net_r(oos_trades, r_col)
 
     lines = [
-        f"Strategy: NYAM-SWEEP-FVG {version}   Instrument/Session: EURUSD / NY AM",
+        f"Strategy: {strategy_name} {version}   Instrument/Session: EURUSD / NY AM",
         f"Window: {window}   Data: {data_desc}   MT5 mode: {mt5_mode}",
         f"Costs: {costs_desc}",
         "",

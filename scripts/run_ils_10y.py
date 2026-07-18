@@ -179,7 +179,8 @@ report = part_f_report(
     mt5_mode="n/a (Python, 1-minute intrabar fills)",
     costs_desc=f"spread=0.8pip commission=$7/lot slippage=0.3pip (1.0x; 1.5x OOS exp={m15.expectancy:.3f})",
     is_trades=is_t, oos_trades=oos_t, gates=gates, r_col="r_net", risk_pct=0.5,
-    robustness=(robustness.marks() if robustness else None), status=status)
+    robustness=(robustness.marks() if robustness else None), status=status,
+    strategy_name="NYAM-ILS-FVG")
 print("\n== PART F ==\n" + report)
 Path("reports/NYAM-ILS-FVG_v1.0_10y_run.txt").write_text(
     report + f"\n\nLOCKED PARAMS (selected on IS 2015-2021 only): "
