@@ -7,15 +7,16 @@ venv/
 .pytest_cache/
 .ipynb_checkpoints/
 
-# Data (large, not versioned — document source in reports instead)
-data/raw/*
+# Data (large, not versioned — SOURCE.md documents provenance instead)
+data/raw/**/*.csv
+data/raw/**/*.zip
+data/raw/**/*.bi5
 data/processed/*
 data/news/*
 !data/**/.gitkeep
+!data/**/SOURCE.md
 
-# Reports output (keep the dir, ignore generated runs)
-reports/*
-!reports/.gitkeep
+# Reports are tracked (small text analysis artifacts, not raw data)
 
 # OS
 .DS_Store

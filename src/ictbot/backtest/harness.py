@@ -25,10 +25,18 @@ def backtest(
     cost_model: CostModel | None = None,
     df1m: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    """Run one backtest. If ``df1m`` is given, use 1-minute intrabar fills."""
+    """Run one backtest. If ``df1m`` is given, use 1-minute intrabar fills.
+
+    Without real bid/ask data, the spread filter (A5 #2) is evaluated against the
+    cost model's assumed session spread (B2's 75th-percentile fixed-spread
+    fallback) rather than a per-bar spread — the same number the cost model
+    charges, so the filter and the cost are consistent with each other.
+    """
     if fill_model is None and df1m is not None:
         fill_model = IntrabarFillModel(df1m)
-    feats = prepare_features(df5, df1h, params)
+    default_spread = (cost_model.spread_pips * params.pip
+                      if cost_model is not None else None)
+    feats = prepare_features(df5, df1h, params, default_spread_price=default_spread)
     trades = run(feats, params, news=news, fill_model=fill_model)
     if cost_model is not None:
         trades = apply_costs(trades, cost_model)

@@ -91,7 +91,7 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 - [x] Part F report generator — renders exactly to the spec template (`reporting/report.py`)
 - [x] 9 new tests (48 total green); sample report verified visually
 
-## PHASE 7 — Validation & fine-tuning loop (Part C)  — driver built ✅ / real run blocked
+## PHASE 7 — Validation & fine-tuning loop (Part C)  — REAL RUN COMPLETE, TESTED-FAIL
 - [x] C1 pre-flight (`validation/preflight.py`): time conversion, 17:00 boundary, killzone/PDH-PDL present, no same-bar exit
 - [x] C3 bounded IS optimiser (`validation/optimize.py`): ≤3 params + coarse-grid + no-sl_buffer guards enforced in code; select by expectancy, tie-break maxDD; `suggest_sl_buffer_points` from winners' MAE p90
 - [x] C4 single OOS look → 6 gates (via `evaluate_gates`, Phase 6)
@@ -99,8 +99,8 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 - [x] `full_validation` driver + `cli.py` (`python -m ictbot.validation.cli`) + CSV/tick loader (`data/load.py`)
 - [x] Param mutation helpers on `EngineParams` (`replace`, `clamp_free`, ranges) + `perturb`/`set`/`shift_session`
 - [x] 10 new tests (58 total green); driver smoke → TESTED-FAIL on noise as expected
-- [ ] **C2 baseline + C4 OOS run on REAL data** — blocked on data (this is the run that produces the verdict)
-- [ ] Archive log entry if FAIL (C5); iterate to v1.1 with **one** change if warranted — after a real run
+- [x] **C2 baseline + C4 OOS run on REAL data** — ran on EURUSD 2022-2024 (HistData 1m, 3 full years). Found and fixed a real bug: the narrative gate (bias+DOL+shallow-floor) was being re-evaluated every 5m bar with a moving price instead of once at 08:30 NY per spec A2; fixed in `state_machine.py` (all 60 tests still pass, unchanged). After the fix: **0 trades over 3 years** — traced to a structural tension between the fixed `dol_reach_atr_1h=3.0` constant (~44-46 pip reach) and the actual EURUSD PDH-PDL day range (median 66.7 pips), which none of the 7 free parameters can address. Full writeup: `reports/v1.0_2022-2024_run1_findings.md`; machine report: `reports/v1.0_2022-2024_run1.txt`.
+- [x] Archive log entry written (C5, in the findings doc) — **decision on next step left to the user** (archive & pick a new instrument/session/concept, deliberately revise the fixed `dol_reach_atr_1h` constant as a new spec version, or reconsider DOL as a hard gate). Not unilaterally resolved — the spec reserves fixed-constant changes for a human decision, not an implementation "fix."
 
 ## PHASE 8 — MQL5 EA (forward/live vehicle)  — written ✅ / needs MetaEditor compile + cross-check
 - [x] Full A7 state machine ported (`mql5/NYAM_SWEEP_FVG.mq5`), function names match D1
@@ -128,11 +128,8 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 ---
 
 ## Current position
-- **All buildable phases are done (0–9).** The complete research + validation stack plus the MQL5 EA and Pine visual script are written and (for Python) tested end-to-end: data → engine → harness → metrics → gates → robustness → Part F report, runnable via `python -m ictbot.validation.cli`. **58 tests green.**
-- **The only remaining work needs external inputs:**
-  - **Real data** to run the actual C2 baseline + C4 OOS verdict (Phase 7 run).
-  - **MetaEditor + MT5** to compile the EA and cross-check it against the Python numbers (Phase 8 finish).
-  - **A TESTED-PASS** before any of Phase 10 (go-live ladder) applies.
-- **Open blocker (environment/policy):**
-  - **Dukascopy egress → 403** — session network policy blocks `datafeed.dukascopy.com`. To produce real numbers: open the network policy for that host, run the downloader elsewhere and drop files in `data/raw`, or hand over tick/1m CSVs (loader auto-detects columns).
-- **Next action:** get EURUSD tick/1m data, then run `python -m ictbot.validation.cli` for the real verdict. Everything else (EA compile, go-live) follows from that.
+- **The real validation run happened.** User supplied EURUSD 2022-2024 1-minute data (HistData.com). Ran C1 pre-flight (green) → found and fixed a genuine engine bug (DOL narrative gate was re-evaluated every bar instead of once at 08:30 NY per spec A2) → re-ran → **0 trades over 3 years**, traced to a structural tension between the fixed `dol_reach_atr_1h=3.0` constant and real EURUSD range statistics, not addressable by any of the 7 free parameters. **Status: TESTED-FAIL (insufficient sample).** Full findings: `reports/v1.0_2022-2024_run1_findings.md`. Data lives in `data/raw/EURUSD_M1_histdata/` (source documented in `SOURCE.md`); loader `ictbot.data.load.load_histdata_ascii_m1` handles HistData's fixed-GMT-5 (no-DST) timestamp convention. **60 tests green.**
+- **Decision needed from the user** (deliberately not made unilaterally — the spec reserves fixed-constant changes for a human): archive this concept pair and start a new v1.0 hypothesis on a different instrument/session/concept (per spec C4 step 12), or consciously revise the fixed `dol_reach_atr_1h` constant as a new documented spec version, or reconsider DOL as a hard gate. See the findings doc's "Options" section.
+- Phase 8 (MQL5 EA) still needs a MetaEditor compile + cross-check against Python. Phase 10 (go-live) stays gated on an eventual TESTED-PASS.
+- Dukascopy egress is still blocked, but is now moot — HistData supplied the real dataset.
+- **Next action:** wait on the user's decision above before writing any v1.1 or new hypothesis.

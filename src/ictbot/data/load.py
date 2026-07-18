@@ -43,6 +43,33 @@ def load_ohlcv_csv(path: str | Path) -> pd.DataFrame:
     return out[~out.index.isna()].sort_index()
 
 
+def load_histdata_ascii_m1(paths: list[str | Path]) -> pd.DataFrame:
+    """Load HistData.com free 'Generic ASCII' M1 export(s) into UTC OHLCV.
+
+    Format: no header, semicolon-separated ``YYYYMMDD HHMMSS;O;H;L;C;V`` (volume
+    is always 0 in the free feed). HistData documents these timestamps as a
+    **fixed GMT-5 ("EST") offset with NO Daylight Saving adjustment** — this is
+    NOT the same as true ``America/New_York``, which shifts to UTC-4 in summer.
+    Localizing naively as ``America/New_York`` would silently mislabel every
+    summer bar by an hour: exactly the DST bug class the spec calls the #1
+    cause of broken ICT backtests. So these are localized to the fixed
+    ``Etc/GMT+5`` zone (POSIX sign is inverted: ``Etc/GMT+5`` == UTC-5) and
+    converted to true UTC here, before any DST-aware killzone/PDH-PDL logic
+    ever sees them. Multiple yearly files are concatenated and sorted.
+    """
+    frames = []
+    for p in paths:
+        df = pd.read_csv(p, sep=";", header=None,
+                         names=["ts", "open", "high", "low", "close", "volume"])
+        frames.append(df)
+    raw = pd.concat(frames, ignore_index=True)
+    ts = pd.to_datetime(raw["ts"], format="%Y%m%d %H%M%S")
+    ts_utc = ts.dt.tz_localize("Etc/GMT+5").dt.tz_convert("UTC")
+    out = raw[["open", "high", "low", "close", "volume"]].copy()
+    out.index = pd.DatetimeIndex(ts_utc, name="time")
+    return out[~out.index.duplicated()].sort_index()
+
+
 def build_frames(df1m: pd.DataFrame):
     """Return (df1m, df5, df1h) from a 1-minute OHLCV frame."""
     if df1m.index.tz is None:

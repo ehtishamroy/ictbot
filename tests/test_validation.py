@@ -118,6 +118,33 @@ def test_load_ohlcv_csv(tmp_path):
     assert df.index.tz is not None and len(df) == 2
 
 
+def test_load_histdata_ascii_m1_fixed_utc5(tmp_path):
+    from ictbot.data.load import load_histdata_ascii_m1
+    csv = tmp_path / "DAT_ASCII_EURUSD_M1_2024.csv"
+    # 08:30 EST(fixed, no DST) on a July line -> 13:30 UTC, NOT 12:30 UTC
+    # (12:30 UTC is what a WRONG America/New_York/DST parse would give in July).
+    csv.write_text(
+        "20240715 083000;1.10000;1.10010;1.09990;1.10005;0\n"
+        "20240715 083100;1.10005;1.10020;1.10000;1.10015;0\n"
+    )
+    df = load_histdata_ascii_m1([csv])
+    assert list(df.columns) == ["open", "high", "low", "close", "volume"]
+    assert str(df.index.tz) == "UTC"
+    assert df.index[0] == pd.Timestamp("2024-07-15 13:30:00", tz="UTC")
+    assert df.iloc[0]["close"] == 1.10005
+
+
+def test_load_histdata_ascii_m1_concat_multiple_files(tmp_path):
+    from ictbot.data.load import load_histdata_ascii_m1
+    a = tmp_path / "2022.csv"
+    b = tmp_path / "2023.csv"
+    a.write_text("20220102 170300;1.1;1.1;1.1;1.1;0\n")
+    b.write_text("20230101 170400;1.2;1.2;1.2;1.2;0\n")
+    df = load_histdata_ascii_m1([a, b])
+    assert len(df) == 2
+    assert df.index.is_monotonic_increasing
+
+
 # --- synthetic frames for preflight + driver --------------------------------
 def _synthetic_frames(days=6, seed=1):
     idx = pd.date_range("2024-01-01", periods=days * 1440, freq="1min", tz="UTC")

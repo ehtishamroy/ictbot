@@ -99,12 +99,14 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
     # first bar index and killzone-open price per trading day
     day_first: dict = {}
     day_kz_open: dict = {}
+    day_kz_open_idx: dict = {}
     for i in range(n):
-        d = tday[i]
-        if d not in day_first:
-            day_first[d] = i
-        if in_kz[i] and d not in day_kz_open:
-            day_kz_open[d] = op[i]
+        dy = tday[i]
+        if dy not in day_first:
+            day_first[dy] = i
+        if in_kz[i] and dy not in day_kz_open:
+            day_kz_open[dy] = op[i]
+            day_kz_open_idx[dy] = i
 
     def swept_before(pool: str, day, upto_excl: int) -> bool:
         arr = pierced_pdl if pool == "pdl" else pierced_pdh
@@ -126,6 +128,17 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
     day_r = 0.0
     locked = False
     attempted: set = set()   # (day, dirname, level) — one attempt per pool per day
+    # A2 narrative cache: day -> None (no trade today) | (DirSpec, swp_lvl, dol_lvl).
+    # Bias + DOL + shallow-floor are the "at 08:30 NY" narrative gate (spec A2) and
+    # are evaluated ONCE, at the day's first killzone bar — not re-derived every
+    # bar. DOL's reach is a distance from CURRENT price to the opposite pool; at
+    # the moment a sweep actually fires, price sits at one extreme of the day's
+    # range, i.e. structurally farthest from that opposite pool, so re-checking
+    # DOL bar-by-bar would reject genuine setups almost by construction. Freezing
+    # it to the killzone-open snapshot is what "all three must be TRUE at 08:30
+    # NY" in the spec actually asks for. The LTF mechanical trigger (A3: sweep ->
+    # MSS -> FVG) still runs reactively, bar by bar, from there.
+    narrative: dict = {}
 
     # setup carry
     sweep_extreme = np.nan
@@ -225,26 +238,33 @@ def run(features: pd.DataFrame, params: EngineParams, news=None,
         if state == IDLE:
             if not entry_ok:
                 continue
-            b = bias[i]
-            d = _LONG if b == "BULLISH" else _SHORT if b == "BEARISH" else None
-            if d is None:
+
+            if day not in narrative:                # A2: evaluate once, at 08:30 NY
+                kz_idx = day_kz_open_idx.get(day)
+                kz_open = day_kz_open.get(day)
+                nb = bias[kz_idx] if kz_idx is not None else None
+                nd = (_LONG if nb == "BULLISH" else _SHORT if nb == "BEARISH" else None)
+                entry_narrative = None
+                if nd is not None and kz_idx is not None:
+                    n_swp_lvl = pdl[kz_idx] if nd.name == LONG else pdh[kz_idx]
+                    n_dol_lvl = pdh[kz_idx] if nd.name == LONG else pdl[kz_idx]
+                    if np.isfinite(n_swp_lvl) and np.isfinite(n_dol_lvl):
+                        shallow = ((kz_open - n_swp_lvl) < params.shallow_floor_price
+                                   if nd.name == LONG
+                                   else (n_swp_lvl - kz_open) < params.shallow_floor_price)
+                        dol_swept = swept_incl(nd.dol_pool, day, kz_idx)
+                        if not shallow and dol_exists(kz_open, n_dol_lvl, atr1h[kz_idx],
+                                                      nd.dol_dir, dol_swept, params.dol_reach):
+                            entry_narrative = (nd, n_swp_lvl, n_dol_lvl)
+                narrative[day] = entry_narrative
+
+            cached = narrative[day]
+            if cached is None:
                 continue
-            swp_lvl = pdl[i] if d.name == LONG else pdh[i]
-            dol_lvl = pdh[i] if d.name == LONG else pdl[i]
-            if not np.isfinite(swp_lvl) or not np.isfinite(dol_lvl):
-                continue
+            d, swp_lvl, dol_lvl = cached
             if (day, d.name, swp_lvl) in attempted:
                 continue
-            kz_open = day_kz_open.get(day)
-            if kz_open is None:
-                continue
-            shallow = ((kz_open - swp_lvl) < params.shallow_floor_price if d.name == LONG
-                       else (swp_lvl - kz_open) < params.shallow_floor_price)
-            if shallow:
-                continue
-            dol_swept = swept_incl(d.dol_pool, day, i)  # dol pool must be unswept
-            if not dol_exists(cl[i], dol_lvl, atr1h[i], d.dol_dir, dol_swept, params.dol_reach):
-                continue
+
             sweep = detect_sweep_at(features, i, swp_lvl, d.sweep_dir,
                                     params.tick, params.sweep_close_n)
             if sweep is None:

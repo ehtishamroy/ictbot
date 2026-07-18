@@ -1,0 +1,15 @@
+Strategy: NYAM-SWEEP-FVG v1.0   Instrument/Session: EURUSD / NY AM
+Window: 2022-01-02..2024-12-31   Data: 1m, HistData.com (EURUSD, fixed GMT-5 source, converted to true UTC)   MT5 mode: n/a (Python harness, 1-minute intrabar fills)
+Costs: spread=0.8pip commission=$7.0/lot slippage=0.3pip (1.0x)
+
+IS : trades=0  win%=n/a  avgRR=n/a  expectancy(R)=n/a  PF=n/a  maxDD(R)=0.00  streak=0
+OOS: trades=0  win%=n/a  avgRR=n/a  expectancy(R)=n/a  PF=n/a  maxDD(R)=0.00  streak=0
+Trades/month = 0.00        MAE p90 (winners) = n/a        MFE median = n/a
+
+Monthly net R table (OOS):
+  (no OOS trades)
+
+Gates: 1[ ] 2[ ] 3[ ] 4[ ] 5[ ] 6[ ]   ->  FAIL
+Robustness (if gates passed): perturb[ ] cost1.5x[ ] session±15[ ] monthly[ ]
+
+Status: TESTED-FAIL. Performance reported against the B5 gates only.
