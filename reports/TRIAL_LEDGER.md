@@ -48,6 +48,17 @@ found fresh-FVG forward returns ~50/50 — the signal is directionless.
 
 **Cumulative distinct configs across all EURUSD price-action work: ≈ 128.**
 
+## New program: DIVTREND v1.0 (different signal family) — 2026-07-19
+
+Owner redirected to diversified time-series momentum (TSMOM), vol-scaled, across
+a 20–40 instrument basket — the evidence-preferred fresh direction
+(`docs/spec/PREREG_DIVTREND_v1.0.md`, `docs/spec/Redeploy_Direction_Evidence_Report.md`).
+Different signal family (documented information content + high breadth), so it
+addresses the root causes; but the deflated-significance accounting CONTINUES —
+DIVTREND's ≤20-config budget is counted on top of the ~128 already spent, via
+its own Deflated Sharpe Ratio gate (B5 #6). Universe fixed at pre-registration
+(no in-sample universe cherry-picking). Abandonment rule pre-committed.
+
 ## Stage-2 escalation reached (2026-07-19)
 
 Two distinct concept families (sweep→MSS→FVG; FVG-continuation) have failed OOS,
