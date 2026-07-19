@@ -5,7 +5,7 @@ strategy:
   name: DIVTREND
   version: "1.0"
   instrument: BASKET
-  status: UNTESTED
+  status: TESTED-PASS
 
 # --- Free parameters. cap 6, using 4 (kept minimal; every knob inflates PBO). ---
 free_params:

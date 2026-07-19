@@ -35,8 +35,12 @@ base = DivtrendParams.from_config(cfg)
 gates_cfg = cfg.backtest["gates"]
 
 prices = load_etf_dir(ETF_DIR)
+# Pre-reg B1: every instrument must span the full window. Trim to the common
+# window where all instruments have data (ffill already applied by the loader).
+prices = prices.dropna()
 sleeves = sleeves_for(prices.columns)
-log(f"panel: {prices.shape[1]} instruments, {prices.index[0].date()}..{prices.index[-1].date()}")
+log(f"panel: {prices.shape[1]} instruments, common window "
+    f"{prices.index[0].date()}..{prices.index[-1].date()} ({prices.shape[0]} rows)")
 log(f"sleeves: {pd.Series(sleeves).value_counts().to_dict()}")
 
 split = prices.index[int(len(prices) * base.is_frac)]

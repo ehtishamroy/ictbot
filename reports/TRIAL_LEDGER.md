@@ -59,6 +59,14 @@ DIVTREND's ≤20-config budget is counted on top of the ~128 already spent, via
 its own Deflated Sharpe Ratio gate (B5 #6). Universe fixed at pre-registration
 (no in-sample universe cherry-picking). Abandonment rule pre-committed.
 
+## DIVTREND v1.0 — TESTED-PASS (2026-07-19)
+
+15 IS configs (<=20 budget). Locked lookback=9mo/skip=0/vol_lb=30d/band=0.3.
+Single OOS look: all 6 gates PASS. OOS Sharpe 0.97, full-period 0.67, survives
+2x costs, breadth-robust (leave-one-sleeve 0.78-0.94), DSR 0.958 vs ~143 trials.
+Post-pass robustness held (drop-2022 -> 0.84; perturbation +/-20% all positive).
+reports/DIVTREND_v1.0_findings.md. Next: forward/paper test per go-live ladder.
+
 ## Stage-2 escalation reached (2026-07-19)
 
 Two distinct concept families (sweep→MSS→FVG; FVG-continuation) have failed OOS,
