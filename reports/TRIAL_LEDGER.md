@@ -37,3 +37,22 @@ Anything new on EURUSD intraday price action must clear a *deflated* bar:
 - one single OOS look, computed with the actual cumulative trial count in mind.
 
 New trials for a fresh hypothesis are logged in that hypothesis's own pre-reg doc.
+
+## EURUSD-FVGC v1.0 (Direction 2) — +18 configs, TESTED-FAIL
+
+Pre-reg `docs/spec/PREREG_EURUSD-FVGC_v1.0.md`; 18 IS grid configs (2×9) within
+the ≤24 budget; single OOS look. **Result: robust OOS-confirmed NEGATIVE**
+(IS −0.35R / OOS −0.32R, PF 0.61/0.63). A direct signal probe (5,174 IS signals)
+found fresh-FVG forward returns ~50/50 — the signal is directionless.
+`reports/EURUSD-FVGC_v1.0_findings.md`.
+
+**Cumulative distinct configs across all EURUSD price-action work: ≈ 128.**
+
+## Stage-2 escalation reached (2026-07-19)
+
+Two distinct concept families (sweep→MSS→FVG; FVG-continuation) have failed OOS,
+and the core signal is measured directionless. Per the pre-reg Stage-2 rule and
+the evidence report: **bank the negative on EURUSD intraday price-action.** Any
+further work should be genuinely new territory (different instrument/timeframe or
+non-price-action signal), started as a new research program with its own budget —
+not another patch here.

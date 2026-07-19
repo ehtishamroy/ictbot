@@ -127,7 +127,13 @@ Each: uses only data up to bar *i*, returns bool/zone, has its own unit test.
 
 ---
 
-## Current position (after full 10-year validation)
+## Current position (after FVGC — recommend banking the negative)
+- **EURUSD-FVGC v1.0 (Direction 2, FVG-continuation): TESTED-FAIL, decisively.** Full 10-year pre-registered run: IS −0.35R / OOS −0.32R, PF 0.61/0.63 — a *robust, out-of-sample-confirmed negative* (IS≈OOS, so not overfit), 3,841 trades so frequency is solved. Fails the PRIMARY cost-robustness gate and 4 of 6 B5 gates. `reports/EURUSD-FVGC_v1.0_findings.md`.
+- **Root cause measured, not guessed:** a direct probe (5,174 IS signals) shows fresh-FVG forward returns are **~50/50** (48–49% positive) — the signal is directionless on EURUSD 5m. Momentum doesn't work; reversion is far too weak to beat costs. A ~coin-flip signal at fixed 2:1 RR wins ~33% (break-even) and costs make it a loss.
+- **Stage-2 escalation reached → recommendation: BANK THE NEGATIVE.** Two distinct concept families have now failed OOS and the core signal is directionless; ~128 cumulative configs spent. Per the pre-reg rule and the evidence report, continuing to spin EURUSD price-action variants is the sunk-cost error. **The rigorously validated "no edge here" IS the deliverable** — produced by a pipeline that repeatedly refused to ship an overfit. Any further work = genuinely new territory (different instrument/timeframe or non-price-action signal), a fresh research program. **Decision is the user's.**
+- 73 tests green. All pushed.
+
+## Earlier position (after full 10-year sweep-family validation)
 - **NYAM-ILS-FVG v1.0: TESTED-FAIL out-of-sample** on the full 10-year sample (IS 2015-2021 / OOS 2022-2024, 3.67M 1m bars). Tuned on the fresh 2015-2021 IS only (best cell +0.49R IS), locked, single OOS look on 2022-2024: **OOS expectancy −0.13R, PF 0.79, −0.34R at 1.5× costs; gates 1/2/4/6 fail.** The in-sample edge did not survive out-of-sample (overfit, correctly caught). Full writeup: `reports/NYAM-ILS-FVG_v1.0_findings.md`; machine report: `reports/NYAM-ILS-FVG_v1.0_10y_run.txt`.
 - **ARCHIVED — this is the 3rd failed variant of the sweep→MSS→FVG family on EURUSD/NY-AM** (NYAM-SWEEP-FVG v1.0, v2.0; NYAM-ILS-FVG v1.0). Per the spec's own rule ("archived, not tortured until it confesses"), the concept family is done on this instrument/session. A structural frequency floor (~0.65 trades/mo → ~78 lifetime < 100-trade minimum) means it is effectively unvalidatable in this form regardless.
 - **Honest overall conclusion:** across 3 designs and 10 years of real data under correct IS/OOS discipline and realistic costs, no durable edge was demonstrated. The system worked — it found and *rejected* an overfit rather than shipping one. That is the correct, valuable outcome. **Decision on any genuinely new direction (different session/concept, still EURUSD) is the user's** — I will not keep patching an archived concept.

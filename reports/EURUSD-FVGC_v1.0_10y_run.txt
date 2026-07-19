@@ -1,0 +1,53 @@
+Strategy: EURUSD-FVGC v1.0   Instrument/Session: EURUSD / NY AM
+Window: IS 2015-2021 / OOS 2022-2024 (EURUSD, 07-16 UTC)   Data: 1m HistData (fixed GMT-5->UTC); news filter DISABLED (no calendar)   MT5 mode: n/a (Python, 1-minute intrabar fills)
+Costs: spread=0.8pip commission=$7/lot slippage=0.3pip (1.0x; PRIMARY GATE 1.5x exp=-0.483, 2.0x exp=-0.644)
+
+IS : trades=2746  win%=33.1  avgRR=1.22  expectancy(R)=-0.35  PF=0.61  maxDD(R)=950.25  streak=18
+OOS: trades=1095  win%=34.1  avgRR=1.22  expectancy(R)=-0.32  PF=0.63  maxDD(R)=356.84  streak=16
+Trades/month = 30.50        MAE p90 (winners) = 0.79        MFE median = 0.90
+
+Monthly net R table (OOS):
+  2022-01: -18.59
+  2022-02: -4.08
+  2022-03: -10.22
+  2022-04: 2.77
+  2022-05: -9.18
+  2022-06: -9.14
+  2022-07: -2.49
+  2022-08: -2.06
+  2022-09: 5.28
+  2022-10: -14.21
+  2022-11: -1.15
+  2022-12: -16.22
+  2023-01: -16.77
+  2023-02: -7.97
+  2023-03: -5.71
+  2023-04: 1.32
+  2023-05: -3.96
+  2023-06: -3.00
+  2023-07: -9.85
+  2023-08: -4.80
+  2023-09: -14.91
+  2023-10: -13.39
+  2023-11: -6.83
+  2023-12: -25.13
+  2024-01: -9.89
+  2024-02: -12.71
+  2024-03: -16.12
+  2024-04: -26.76
+  2024-05: -17.64
+  2024-06: -4.45
+  2024-07: -13.17
+  2024-08: -9.59
+  2024-09: -11.32
+  2024-10: -27.78
+  2024-11: -3.59
+  2024-12: -9.79
+
+Gates: 1[ ] 2[ ] 3[ ] 4[x] 5[x] 6[ ]   ->  FAIL
+Robustness (if gates passed): perturb[x] cost1.5x[!] session±15[ ] monthly[x]
+
+Status: TESTED-FAIL. Performance reported against the B5 gates only.
+
+LOCKED (IS 2015-2021 only): ema_len=20 rr_target=2.0 fvg_min=0.5 disp_mult=1.5 sl_buffer_points=10 expiry_bars=6
+PRIMARY cost gate: 1.5x exp=-0.483, 2.0x exp=-0.644 -> FAIL
